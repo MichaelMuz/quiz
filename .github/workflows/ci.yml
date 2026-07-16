@@ -1,0 +1,76 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: ["**"]
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run typecheck
+      - run: npm run build
+      - name: Smoke production container
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          container=quiz-ci
+          volume=quiz-ci-data
+          cleanup() {
+            status=$?
+            if (( status )); then docker logs "$container" 2>&1 || true; fi
+            docker rm -f "$container" >/dev/null 2>&1 || true
+            docker volume rm -f "$volume" >/dev/null 2>&1 || true
+            exit "$status"
+          }
+          trap cleanup EXIT
+          docker build -t quiz-ci .
+          start() {
+            docker run -d --name "$container" --read-only --tmpfs /tmp \
+              -v "$volume:/data" -p 127.0.0.1:3000:3000 quiz-ci
+          }
+          ready() {
+            for _ in {1..30}; do
+              curl -fsS http://127.0.0.1:3000/healthz >/dev/null &&
+                curl -fsS http://127.0.0.1:3000/readyz >/dev/null && return
+              sleep 1
+            done
+            return 1
+          }
+          start
+          ready
+          curl -fsS http://127.0.0.1:3000/practice >/dev/null
+          docker rm -f "$container"
+          start
+          ready
+
+  publish:
+    needs: check
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ghcr.io/michaelmuz/quiz:latest
