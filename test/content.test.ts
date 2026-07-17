@@ -24,6 +24,18 @@ describe("content validation", () => {
   });
 });
 
+describe("static questions", () => {
+  it("tests numerical latency anchors rather than relative ordering", () => {
+    const item = contentBank.find((candidate) => candidate.id === "systems-latency-orders");
+    expect(item).toBeDefined();
+    expect(item!.prompt).toMatch(/latency.*order of magnitude/i);
+    expect(item!.prompt).toMatch(/L1.*capacity.*cycles.*ns/i);
+    expect(item!.prompt).toMatch(/ns.*µs.*ms/i);
+    expect(item!.prompt).not.toMatch(/fastest-to-slowest/i);
+    expect(item!.answer).toMatch(/32[–-]64 KiB.*3[–-]5 cycles.*1 ns.*100 ns.*100 µs.*10 ms.*100 ms/i);
+  });
+});
+
 describe("generated questions", () => {
   it("replays every registered generator exactly and grades its expected answer correct", () => {
     fc.assert(fc.property(

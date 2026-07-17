@@ -22,8 +22,8 @@ export const contentBank: StaticItem[] = [
     id: "systems-latency-orders",
     kind: "flashcard",
     topic: "Systems",
-    prompt: "Put these in typical fastest-to-slowest order: L1 cache, DRAM, local SSD, cross-region network, HDD.",
-    answer: "L1 cache (about 1 ns), DRAM (about 100 ns), local SSD (about 100 µs), HDD (about 10 ms), then a cross-region round trip (tens to hundreds of ms). The orders of magnitude matter more than exact hardware numbers.",
+    prompt: "Recall these latency ballparks: L1D capacity per core and hit time in cycles/ns; DRAM access; NVMe random read; HDD seek; cross-region RTT. Use KiB, cycles, ns, µs, and ms. The order of magnitude counts.",
+    answer: "L1 data cache: usually 32–64 KiB per core on mainstream x86 (some cores are larger), about 3–5 cycles or roughly 1 ns; use 64 KiB and 1 ns as mental anchors. DRAM access: about 100 ns. Local NVMe SSD random read: about 100 µs. HDD seek: about 10 ms. Cross-region round trip: about 100 ms, often tens to hundreds of ms. Roughly: DRAM is 100× L1, SSD is 1,000× DRAM, HDD is 100× SSD, and cross-region is 10× HDD. Hardware, workload, and geography vary, so remember the powers of ten rather than treating these as constants.",
     source: { label: "Systems Performance: Enterprise and the Cloud", url: "https://www.brendangregg.com/systems-performance-2nd-edition-book.html" },
   },
   {
