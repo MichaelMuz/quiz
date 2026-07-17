@@ -29,10 +29,19 @@ describe("static questions", () => {
     const item = contentBank.find((candidate) => candidate.id === "systems-latency-orders");
     expect(item).toBeDefined();
     expect(item!.prompt).toMatch(/latency.*order of magnitude/i);
-    expect(item!.prompt).toMatch(/L1.*capacity.*cycles.*ns/i);
-    expect(item!.prompt).toMatch(/ns.*µs.*ms/i);
-    expect(item!.prompt).not.toMatch(/fastest-to-slowest/i);
-    expect(item!.answer).toMatch(/32[–-]64 KiB.*3[–-]5 cycles.*1 ns.*100 ns.*100 µs.*10 ms.*100 ms/i);
+    expect(item!.prompt).toMatch(/L1.*DRAM.*NVMe.*HDD.*cross-region/i);
+    expect(item!.prompt).not.toMatch(/fastest-to-slowest|capacity/i);
+    expect(item!.answer).toMatch(/1 ns.*100 ns.*100 µs.*10 ms.*100 ms/i);
+  });
+
+  it("makes the VIPT L1D geometry derivable instead of teaching 64 KiB as universal", () => {
+    const item = contentBank.find((candidate) => candidate.id === "systems-vipt-l1-geometry");
+    expect(item).toBeDefined();
+    expect(item!.prompt).toMatch(/4 KiB.*64 B.*8.*12.*16/i);
+    expect(item!.answer).toMatch(/virtually indexed.*physically tagged/i);
+    expect(item!.answer).toMatch(/64 sets.*32 KiB.*48 KiB.*64 KiB/i);
+    expect(item!.answer).toMatch(/per physical core.*SMT/i);
+    expect(item!.answer).toMatch(/not.*mandatory/i);
   });
 });
 

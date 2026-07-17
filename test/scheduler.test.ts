@@ -9,6 +9,6 @@ describe("transparent interval scheduler", () => {
 
   it("uses a mixed generated/static queue when nothing is due", () => {
     const ids = Array.from({ length: 4 }, (_, position) => chooseStableId(position, [], new Date()));
-    expect(ids).toEqual(["mental-arithmetic", "systems-latency-orders", "binary-units", "protocol-first-visit"]);
+    expect(ids).toEqual(["mental-arithmetic", "systems-latency-orders", "binary-units", "systems-vipt-l1-geometry"]);
   });
 });
