@@ -35,6 +35,13 @@ export const contentBank: StaticItem[] = [
     source: { label: "Intel Optimization Reference Manual v50, Volume 1", url: "https://cdrdv2.intel.com/v1/dl/getContent/671488" },
   },
   {
+    id: "binary-prefix-ladder",
+    kind: "flashcard",
+    topic: "Computer arithmetic",
+    prompt: "Why does each IEC prefix step add 10 to the byte exponent, and how do IEC units differ from decimal SI?",
+    answer: "Each IEC step multiplies by 1024 = 2^10, so the exponent rises by 10: KiB = 2^10 B, MiB = 2^20 B, GiB = 2^30 B, TiB = 2^40 B, PiB = 2^50 B, and EiB = 2^60 B. Decimal SI instead advances by 10^3 per step: GB = 10^9 B, while GiB = 2^30 B.",
+  },
+  {
     id: "protocol-first-visit",
     kind: "flashcard",
     topic: "Protocols",
@@ -91,6 +98,8 @@ export const generatedDefinitions: GeneratedDefinition[] = [
   { id: "mental-arithmetic", generator: "arithmetic", grader: "integer" },
   { id: "decimal-units", generator: "decimal-units", grader: "integer" },
   { id: "binary-units", generator: "binary-units", grader: "integer" },
+  { id: "binary-prefix-exponent", generator: "binary-prefix-exponent", grader: "integer" },
+  { id: "binary-amount-exponent", generator: "binary-amount-exponent", grader: "integer" },
 ];
 
 function random(seed: number) {
@@ -100,6 +109,15 @@ function random(seed: number) {
     return state / 0x100000000;
   };
 }
+
+const binaryPrefixes = [
+  { unit: "KiB", exponent: 10 },
+  { unit: "MiB", exponent: 20 },
+  { unit: "GiB", exponent: 30 },
+  { unit: "TiB", exponent: 40 },
+  { unit: "PiB", exponent: 50 },
+  { unit: "EiB", exponent: 60 },
+] as const;
 
 const generators: Record<string, (seed: number) => Omit<GeneratedQuestion, "stableId" | "grader">> = {
   arithmetic(seed) {
@@ -124,6 +142,18 @@ const generators: Record<string, (seed: number) => Omit<GeneratedQuestion, "stab
     const unit = next() < 0.5 ? "MiB" : "GiB";
     const factor = unit === "MiB" ? 1_048_576 : 1_073_741_824;
     return { seed, prompt: `${amount} ${unit} = how many bytes? (binary IEC)`, expectedAnswer: String(amount * factor) };
+  },
+  "binary-prefix-exponent"(seed) {
+    const next = random(seed);
+    const prefix = binaryPrefixes[Math.floor(next() * binaryPrefixes.length)]!;
+    return { seed, prompt: `A ${prefix.unit} is 2^? bytes.`, expectedAnswer: String(prefix.exponent) };
+  },
+  "binary-amount-exponent"(seed) {
+    const next = random(seed);
+    const prefix = binaryPrefixes[Math.floor(next() * binaryPrefixes.length)]!;
+    const amountExponent = Math.floor(next() * 5);
+    const amount = 2 ** amountExponent;
+    return { seed, prompt: `Express ${amount} ${prefix.unit} as 2^? bytes.`, expectedAnswer: String(prefix.exponent + amountExponent) };
   },
 };
 

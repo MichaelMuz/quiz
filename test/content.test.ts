@@ -43,6 +43,15 @@ describe("static questions", () => {
     expect(item!.answer).toMatch(/per physical core.*SMT/i);
     expect(item!.answer).toMatch(/not.*mandatory/i);
   });
+
+  it("explains the IEC exponent ladder and distinguishes it from decimal SI", () => {
+    const item = contentBank.find((candidate) => candidate.id === "binary-prefix-ladder");
+    expect(item).toBeDefined();
+    expect(item!.prompt).toMatch(/IEC.*step.*exponent/i);
+    expect(item!.answer).toMatch(/1024 = 2\^10/i);
+    expect(item!.answer).toMatch(/KiB.*2\^10.*MiB.*2\^20.*GiB.*2\^30.*TiB.*2\^40.*PiB.*2\^50.*EiB.*2\^60/i);
+    expect(item!.answer).toMatch(/GB = 10\^9.*GiB = 2\^30/i);
+  });
 });
 
 describe("generated questions", () => {
@@ -67,5 +76,27 @@ describe("generated questions", () => {
         expect(() => gradeAnswer(grader, response, expected)).not.toThrow();
       },
     ));
+  });
+
+  it.each([
+    [1972, "KiB", "10"],
+    [0, "MiB", "20"],
+    [251, "GiB", "30"],
+    [682, "TiB", "40"],
+    [1112, "PiB", "50"],
+    [1542, "EiB", "60"],
+  ])("maps a binary IEC prefix to its exponent for seed %i", (seed, prefix, exponent) => {
+    const question = generateQuestion("binary-prefix-exponent", seed);
+    expect(question.prompt).toBe(`A ${prefix} is 2^? bytes.`);
+    expect(question.expectedAnswer).toBe(exponent);
+    expect(gradeAnswer(question.grader, exponent, question.expectedAnswer)).toBe(true);
+  });
+
+  it("applies exponent arithmetic to a power-of-two GiB amount", () => {
+    const question = generateQuestion("binary-amount-exponent", 255);
+    expect(question.prompt).toBe("Express 4 GiB as 2^? bytes.");
+    expect(question.expectedAnswer).toBe("32");
+    expect(gradeAnswer(question.grader, "32", question.expectedAnswer)).toBe(true);
+    expect(gradeAnswer(question.grader, "34", question.expectedAnswer)).toBe(false);
   });
 });
