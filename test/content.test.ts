@@ -1,6 +1,8 @@
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import {
+  commandConcepts,
+  commandExercises,
   contentBank,
   generateQuestion,
   generatedDefinitions,
@@ -51,6 +53,65 @@ describe("static questions", () => {
     expect(item!.answer).toMatch(/1024 = 2\^10/i);
     expect(item!.answer).toMatch(/KiB.*2\^10.*MiB.*2\^20.*GiB.*2\^30.*TiB.*2\^40.*PiB.*2\^50.*EiB.*2\^60/i);
     expect(item!.answer).toMatch(/GB = 10\^9.*GiB = 2\^30/i);
+  });
+});
+
+describe("command literacy corpus", () => {
+  it("ships the mandatory concepts with definition, read, and write mastery IDs", () => {
+    expect(commandConcepts.map(({ command, concept }) => `${command}:${concept}`)).toEqual(expect.arrayContaining([
+      "fd:type",
+      "fd:max-depth",
+      "xargs:replace",
+      "xargs:max-lines",
+    ]));
+
+    for (const concept of commandConcepts) {
+      const exercises = commandExercises.filter((item) =>
+        item.command?.command === concept.command && item.command.concept === concept.concept);
+      expect(exercises.map((item) => item.command!.mode).sort()).toEqual(["definition", "read", "write"]);
+      expect(new Set(exercises.map((item) => item.id)).size).toBe(3);
+    }
+  });
+
+  it.each([
+    ["fd", "type", /Memory hook: t = type/i],
+    ["fd", "max-depth", /Memory hook: d = depth/i],
+    ["xargs", "replace", /Memory hook: I = insert the input at this placeholder/i],
+    ["xargs", "max-lines", /Memory hook: L = lines per command invocation/i],
+  ])("gives %s %s a labeled memory hook and both learner references", (command, concept, hook) => {
+    const definition = commandExercises.find((item) =>
+      item.command?.command === command && item.command.concept === concept && item.command.mode === "definition");
+    expect(definition?.answer).toMatch(hook);
+    expect(definition?.references?.map(({ label }) => label)).toEqual(["Manual", "TLDR"]);
+    expect(definition?.references?.every(({ url }) => url.startsWith("https://"))).toBe(true);
+  });
+
+  it("teaches portable xargs short forms without inventing GNU long forms on macOS", () => {
+    const replace = commandConcepts.find((concept) => concept.command === "xargs" && concept.concept === "replace");
+    const lines = commandConcepts.find((concept) => concept.command === "xargs" && concept.concept === "max-lines");
+    expect(replace?.label).toBe("-I replace-str");
+    expect(replace?.definition.answer).toMatch(/GNU.*--replace.*not.*portable.*macOS/i);
+    expect(lines?.label).toBe("-L max-lines");
+    expect(lines?.definition.answer).toMatch(/GNU.*--max-lines.*not.*portable.*macOS/i);
+  });
+
+  it("encodes representative deterministic fd, sed, and xargs results", () => {
+    const correctChoice = (command: string, concept: string, mode: "read" | "write") =>
+      commandExercises.find((item) => item.command?.command === command
+        && item.command.concept === concept && item.command.mode === mode)?.correctChoice;
+
+    expect(correctChoice("fd", "type", "read")).toBe("notes.md and src/app.ts");
+    expect(correctChoice("sed", "global-substitution", "read")).toBe("blue blue green");
+    expect(correctChoice("xargs", "max-lines", "read")).toBe("Two invocations: echo run a b c d, then echo run e");
+    expect(correctChoice("xargs", "null-input", "write")).toBe("find . -type f -print0 | xargs -0 sha256sum");
+  });
+
+  it("rejects unsafe references and choice answers outside their choices", () => {
+    const base = contentBank[0]!;
+    expect(() => validateContent([{ ...base, id: "unsafe", references: [{ label: "Bad", url: "javascript:alert(1)" }] }], []))
+      .toThrow(/reference url/i);
+    expect(() => validateContent([{ ...base, id: "choice", choices: ["a"], correctChoice: "b" }], []))
+      .toThrow(/correct choice/i);
   });
 });
 

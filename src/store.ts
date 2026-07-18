@@ -13,7 +13,7 @@ export type Attempt = {
   reviewedAt: string;
 };
 
-export type ReviewState = { stableId: string; interval: number; reviews: number; dueAt: string; updatedAt: string };
+export type ReviewState = { stableId: string; interval: number; reviews: number; successfulReviews: number; dueAt: string; updatedAt: string };
 
 export class QuizStore {
   private readonly db: Database.Database;
@@ -90,8 +90,18 @@ export class QuizStore {
   }
 
   reviewState(stableId: string): ReviewState | null {
-    const row = this.db.prepare("SELECT * FROM review_state WHERE stable_id = ?").get(stableId) as Record<string, unknown> | undefined;
-    return row ? { stableId, interval: Number(row.interval_days), reviews: Number(row.reviews), dueAt: String(row.due_at), updatedAt: String(row.updated_at) } : null;
+    const row = this.db.prepare(`SELECT review_state.*,
+      (SELECT count(*) FROM attempts
+        WHERE attempts.stable_id = review_state.stable_id AND attempts.rating IN ('hard', 'good', 'easy')) AS successful_reviews
+      FROM review_state WHERE stable_id = ?`).get(stableId) as Record<string, unknown> | undefined;
+    return row ? {
+      stableId,
+      interval: Number(row.interval_days),
+      reviews: Number(row.reviews),
+      successfulReviews: Number(row.successful_reviews),
+      dueAt: String(row.due_at),
+      updatedAt: String(row.updated_at),
+    } : null;
   }
 
   allReviewStates(): ReviewState[] {

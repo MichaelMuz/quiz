@@ -36,7 +36,7 @@ describe("QuizStore", () => {
     first.close();
 
     const reopened = new QuizStore(path);
-    expect(reopened.reviewState("systems-latency-orders")).toMatchObject({ interval: 4, reviews: 1 });
+    expect(reopened.reviewState("systems-latency-orders")).toMatchObject({ interval: 4, reviews: 1, successfulReviews: 1 });
     reopened.close();
   });
 

@@ -4,7 +4,7 @@ import { join } from "node:path";
 import type { AddressInfo } from "node:net";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createQuizServer } from "../src/app.js";
-import { generateQuestion } from "../src/content.js";
+import { commandExerciseId, commandExercises, generateQuestion } from "../src/content.js";
 import { QuizStore } from "../src/store.js";
 
 describe("Quiz HTTP app", () => {
@@ -119,6 +119,124 @@ describe("Quiz HTTP app", () => {
     expect(response.status).toBe(303);
     expect(response.headers.get("location")).toContain("result=correct");
     expect(store.attemptCount()).toBe(1);
+  });
+
+  it("renders command definitions with labeled memory hooks and safe Manual and TLDR links", async () => {
+    const definitionId = commandExerciseId("xargs", "max-lines", "definition");
+    store.recordAttempt({
+      submissionId: "due-definition",
+      stableId: definitionId,
+      seed: null,
+      prompt: "fixture",
+      expectedAnswer: "fixture",
+      response: null,
+      correct: null,
+      rating: "again",
+      reviewedAt: "2026-01-01T00:00:00.000Z",
+    });
+
+    const page = await (await fetch(`${base}/practice`)).text();
+    expect(page).toContain("Memory hook: L = Lines per command invocation");
+    expect(page).toContain("xargs · Definition");
+    expect(page).toContain("POSIX short form; GNU and BSD/macOS");
+    expect(page).toContain('href="https://man7.org/linux/man-pages/man1/xargs.1.html" target="_blank" rel="noreferrer">Manual</a>');
+    expect(page).toContain('href="https://tldr.inbrowser.app/pages/common/xargs" target="_blank" rel="noreferrer">TLDR</a>');
+  });
+
+  it("grades command reading choices directly and updates that mode independently", async () => {
+    const definitionId = commandExerciseId("fd", "type", "definition");
+    const readId = commandExerciseId("fd", "type", "read");
+    store.recordAttempt({
+      submissionId: "known-definition",
+      stableId: definitionId,
+      seed: null,
+      prompt: "fixture",
+      expectedAnswer: "fixture",
+      response: null,
+      correct: null,
+      rating: "good",
+      reviewedAt: "2026-01-01T00:00:00.000Z",
+    });
+    store.recordAttempt({
+      submissionId: "due-reading",
+      stableId: readId,
+      seed: null,
+      prompt: "fixture",
+      expectedAnswer: "fixture",
+      response: "wrong",
+      correct: false,
+      rating: "again",
+      reviewedAt: "2026-01-01T00:00:01.000Z",
+    });
+
+    const page = await (await fetch(`${base}/practice`)).text();
+    const submissionId = page.match(/name="submissionId" value="([^"]+)/)?.[1];
+    const item = commandExercises.find(({ id }) => id === readId)!;
+    expect(page).toContain("fd · Read");
+    expect(page).toContain('name="response"');
+    expect(submissionId).toBeTruthy();
+
+    const result = await fetch(`${base}/practice`, {
+      method: "POST",
+      redirect: "manual",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ questionId: readId, submissionId: submissionId!, response: item.correctChoice! }),
+    });
+    expect(result.status).toBe(303);
+    expect(result.headers.get("location")).toContain("result=correct");
+    expect(store.reviewState(readId)).toMatchObject({ reviews: 2 });
+    expect(store.reviewState(definitionId)).toMatchObject({ reviews: 1 });
+  });
+
+  it("shows compact grouped command progress without exposing stored answers", async () => {
+    const definitionId = commandExerciseId("sed", "substitution", "definition");
+    const readId = commandExerciseId("sed", "substitution", "read");
+    store.recordAttempt({
+      submissionId: "progress-definition",
+      stableId: definitionId,
+      seed: null,
+      prompt: "SECRET RAW PROMPT",
+      expectedAnswer: "SECRET RAW ANSWER",
+      response: null,
+      correct: null,
+      rating: "good",
+      reviewedAt: "2025-12-20T00:00:00.000Z",
+    });
+    store.recordAttempt({
+      submissionId: "progress-read-1",
+      stableId: readId,
+      seed: null,
+      prompt: "fixture",
+      expectedAnswer: "fixture",
+      response: "SECRET RAW RESPONSE",
+      correct: true,
+      rating: "good",
+      reviewedAt: "2025-12-20T00:00:01.000Z",
+    });
+    store.recordAttempt({
+      submissionId: "progress-read-2",
+      stableId: readId,
+      seed: null,
+      prompt: "fixture",
+      expectedAnswer: "fixture",
+      response: "fixture",
+      correct: true,
+      rating: "easy",
+      reviewedAt: "2025-12-22T00:00:00.000Z",
+    });
+
+    const response = await fetch(`${base}/progress`);
+    const page = await response.text();
+    expect(response.status).toBe(200);
+    expect(page).toContain("Command mastery");
+    expect(page).toContain("s/regexp/replacement/");
+    expect(page).toContain("Definition");
+    expect(page).toContain("Learning");
+    expect(page).toContain("Established");
+    expect(page).toContain("Unseen");
+    expect(page).not.toContain("SECRET RAW PROMPT");
+    expect(page).not.toContain("SECRET RAW ANSWER");
+    expect(page).not.toContain("SECRET RAW RESPONSE");
   });
 
   it("rejects invalid question IDs", async () => {

@@ -1,12 +1,30 @@
+import { commandExercises } from "./command-content.js";
+
+export { commandConcepts, commandExerciseId, commandExercises } from "./command-content.js";
+export type { CommandConcept } from "./command-content.js";
+
 export type Rating = "again" | "hard" | "good" | "easy";
+export type CommandName = "fd" | "sed" | "xargs";
+export type CommandExerciseMode = "definition" | "read" | "write";
+export type Reference = { label: string; url: string };
+export type CommandMetadata = {
+  command: CommandName;
+  concept: string;
+  label: string;
+  mode: CommandExerciseMode;
+  platform: string;
+};
 export type StaticItem = {
   id: string;
-  kind: "flashcard" | "bash";
+  kind: "flashcard" | "bash" | "command";
   topic: string;
   prompt: string;
   answer: string;
   choices?: string[];
+  correctChoice?: string;
   source?: { label: string; url: string };
+  references?: Reference[];
+  command?: CommandMetadata;
 };
 export type GeneratedDefinition = { id: string; generator: string; grader: string; active?: boolean };
 export type GeneratedQuestion = {
@@ -92,6 +110,7 @@ export const contentBank: StaticItem[] = [
     choices: ["Only stdout goes to the file", "Only stderr goes to the file", "Both go to the file", "The order is irrelevant"],
     source: { label: "GNU Bash manual, Redirections", url: "https://www.gnu.org/software/bash/manual/html_node/Redirections.html" },
   },
+  ...commandExercises,
 ];
 
 export const generatedDefinitions: GeneratedDefinition[] = [
@@ -202,6 +221,14 @@ export function validateContent(items: StaticItem[], definitions: GeneratedDefin
     if (!generators[definition.generator]) problems.push(`generator ${definition.generator}`);
     if (!graders[definition.grader]) problems.push(`grader ${definition.grader}`);
     if (problems.length) throw new Error(`Missing registrations: ${problems.join(", ")}`);
+  }
+  for (const item of items) {
+    if (item.correctChoice && !item.choices?.includes(item.correctChoice)) {
+      throw new Error(`Correct choice is not listed: ${item.id}`);
+    }
+    for (const reference of item.references ?? []) {
+      if (!/^https?:\/\//.test(reference.url)) throw new Error(`Invalid reference URL: ${item.id}`);
+    }
   }
 }
 

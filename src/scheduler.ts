@@ -1,9 +1,16 @@
-import { activeGeneratedDefinitions, contentBank } from "./content.js";
+import { activeGeneratedDefinitions, commandExerciseId, contentBank, type StaticItem } from "./content.js";
 import type { ReviewState } from "./store.js";
 
+function isUnlocked(item: StaticItem, reviewedIds: Set<string>): boolean {
+  if (!item.command || item.command.mode === "definition") return true;
+  return reviewedIds.has(commandExerciseId(item.command.command, item.command.concept, "definition"));
+}
+
 export function chooseStableId(position: number, states: ReviewState[], now: Date): string {
+  const reviewedIds = new Set(states.filter((state) => state.reviews > 0).map((state) => state.stableId));
+  const staticItems = contentBank.filter((item) => isUnlocked(item, reviewedIds));
   const activeIds = new Set([
-    ...contentBank.map((item) => item.id),
+    ...staticItems.map((item) => item.id),
     ...activeGeneratedDefinitions.map((definition) => definition.id),
   ]);
   const due = states
@@ -11,5 +18,5 @@ export function chooseStableId(position: number, states: ReviewState[], now: Dat
     .sort((left, right) => left.dueAt.localeCompare(right.dueAt))[0];
   if (due) return due.stableId;
   if (position % 2 === 0) return activeGeneratedDefinitions[Math.floor(position / 2) % activeGeneratedDefinitions.length]!.id;
-  return contentBank[Math.floor(position / 2) % contentBank.length]!.id;
+  return staticItems[Math.floor(position / 2) % staticItems.length]!.id;
 }
