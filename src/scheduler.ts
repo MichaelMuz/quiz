@@ -3,7 +3,8 @@ import type { ReviewState } from "./store.js";
 
 function isUnlocked(item: StaticItem, reviewedIds: Set<string>): boolean {
   if (!item.command || item.command.mode === "definition") return true;
-  return reviewedIds.has(commandExerciseId(item.command.command, item.command.concept, "definition"));
+  const prerequisite = item.command.mode === "read" ? "definition" : "read";
+  return reviewedIds.has(commandExerciseId(item.command.command, item.command.concept, prerequisite));
 }
 
 export function chooseStableId(position: number, states: ReviewState[], now: Date): string {

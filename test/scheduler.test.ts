@@ -18,7 +18,7 @@ describe("transparent interval scheduler", () => {
     expect(ids).not.toContain("decimal-units");
   });
 
-  it("keeps read and write variants locked until their definition is reviewed", () => {
+  it("unlocks command variants in definition, read, write order", () => {
     const readId = commandExerciseId("fd", "type", "read");
     const writeId = commandExerciseId("fd", "type", "write");
     const lockedDue = {
@@ -37,7 +37,7 @@ describe("transparent interval scheduler", () => {
     const definition = {
       stableId: commandExerciseId("fd", "type", "definition"),
       interval: 2,
-      reviews: 1,
+      reviews: 3,
       successfulReviews: 1,
       dueAt: "2099-01-01T00:00:00.000Z",
       updatedAt: "2026-01-01T00:00:00.000Z",
@@ -45,7 +45,19 @@ describe("transparent interval scheduler", () => {
     const afterDefinition = Array.from({ length: 200 }, (_, position) =>
       chooseStableId(position, [definition], new Date("2026-01-02T00:00:00.000Z")));
     expect(afterDefinition).toContain(readId);
-    expect(afterDefinition).toContain(writeId);
+    expect(afterDefinition).not.toContain(writeId);
+
+    const read = {
+      stableId: readId,
+      interval: 2,
+      reviews: 1,
+      successfulReviews: 1,
+      dueAt: "2099-01-01T00:00:00.000Z",
+      updatedAt: "2026-01-01T00:00:00.000Z",
+    };
+    const afterRead = Array.from({ length: 200 }, (_, position) =>
+      chooseStableId(position, [definition, read], new Date("2026-01-02T00:00:00.000Z")));
+    expect(afterRead).toContain(writeId);
   });
 
   it("keeps every command exercise reachable through deterministic first exposure", () => {
@@ -54,8 +66,8 @@ describe("transparent interval scheduler", () => {
     for (let position = 0; position < 500; position += 1) {
       const id = chooseStableId(position, states, new Date("2026-01-02T00:00:00.000Z"));
       seen.add(id);
-      const definition = commandExercises.find((item) => item.id === id && item.command?.mode === "definition");
-      if (definition && !states.some((state) => state.stableId === id)) {
+      const exercise = commandExercises.find((item) => item.id === id);
+      if (exercise && !states.some((state) => state.stableId === id)) {
         states.push({ stableId: id, interval: 2, reviews: 1, successfulReviews: 1, dueAt: "2099-01-01T00:00:00.000Z", updatedAt: "2026-01-02T00:00:00.000Z" });
       }
     }
