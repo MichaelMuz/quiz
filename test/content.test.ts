@@ -99,4 +99,20 @@ describe("generated questions", () => {
     expect(gradeAnswer(question.grader, "32", question.expectedAnswer)).toBe(true);
     expect(gradeAnswer(question.grader, "34", question.expectedAnswer)).toBe(false);
   });
+
+  it.each([
+    [1972, "10", "KiB"],
+    [0, "20", "MiB"],
+    [251, "30", "GiB"],
+    [682, "40", "TiB"],
+    [1112, "50", "PiB"],
+    [1542, "60", "EiB"],
+  ])("maps a binary exponent to its IEC prefix for seed %i", (seed, exponent, prefix) => {
+    const question = generateQuestion("binary-exponent-prefix", seed);
+    expect(question.prompt).toBe(`Which IEC unit equals 2^${exponent} bytes?`);
+    expect(question.expectedAnswer).toBe(prefix);
+    expect(gradeAnswer(question.grader, prefix.toLowerCase(), question.expectedAnswer)).toBe(true);
+    expect(gradeAnswer(question.grader, prefix.replace("i", ""), question.expectedAnswer)).toBe(true);
+    expect(gradeAnswer(question.grader, prefix === "KiB" ? "mb" : "kb", question.expectedAnswer)).toBe(false);
+  });
 });

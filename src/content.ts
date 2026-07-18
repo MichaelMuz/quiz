@@ -8,7 +8,7 @@ export type StaticItem = {
   choices?: string[];
   source?: { label: string; url: string };
 };
-export type GeneratedDefinition = { id: string; generator: string; grader: string };
+export type GeneratedDefinition = { id: string; generator: string; grader: string; active?: boolean };
 export type GeneratedQuestion = {
   stableId: string;
   seed: number;
@@ -96,11 +96,14 @@ export const contentBank: StaticItem[] = [
 
 export const generatedDefinitions: GeneratedDefinition[] = [
   { id: "mental-arithmetic", generator: "arithmetic", grader: "integer" },
-  { id: "decimal-units", generator: "decimal-units", grader: "integer" },
-  { id: "binary-units", generator: "binary-units", grader: "integer" },
+  { id: "decimal-units", generator: "decimal-units", grader: "integer", active: false },
+  { id: "binary-units", generator: "binary-units", grader: "integer", active: false },
   { id: "binary-prefix-exponent", generator: "binary-prefix-exponent", grader: "integer" },
   { id: "binary-amount-exponent", generator: "binary-amount-exponent", grader: "integer" },
+  { id: "binary-exponent-prefix", generator: "binary-exponent-prefix", grader: "iec-prefix" },
 ];
+
+export const activeGeneratedDefinitions = generatedDefinitions.filter((definition) => definition.active !== false);
 
 function random(seed: number) {
   let state = seed >>> 0;
@@ -155,10 +158,19 @@ const generators: Record<string, (seed: number) => Omit<GeneratedQuestion, "stab
     const amount = 2 ** amountExponent;
     return { seed, prompt: `Express ${amount} ${prefix.unit} as 2^? bytes.`, expectedAnswer: String(prefix.exponent + amountExponent) };
   },
+  "binary-exponent-prefix"(seed) {
+    const next = random(seed);
+    const prefix = binaryPrefixes[Math.floor(next() * binaryPrefixes.length)]!;
+    return { seed, prompt: `Which IEC unit equals 2^${prefix.exponent} bytes?`, expectedAnswer: prefix.unit };
+  },
 };
 
 const graders: Record<string, (response: string, expected: string) => boolean> = {
   integer: (response, expected) => /^[-+]?\d+$/.test(response.trim()) && BigInt(response.trim()) === BigInt(expected),
+  "iec-prefix": (response, expected) => {
+    const normalize = (value: string) => value.trim().toLowerCase().replace(/ib$/, "b");
+    return normalize(response) === normalize(expected);
+  },
   decimal: (response, expected) => {
     const value = response.trim();
     return /^[-+]?(?:\d+\.?\d*|\.\d+)$/.test(value) && Number(value) === Number(expected);

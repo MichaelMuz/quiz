@@ -79,6 +79,48 @@ describe("Quiz HTTP app", () => {
     expect(reviewPage).toContain("Question 2 of 8");
   });
 
+  it("uses a text keyboard for inverse IEC prefix recall", async () => {
+    for (let index = 0; index < 6; index += 1) {
+      store.recordAttempt({
+        submissionId: `fixture-${index}`,
+        stableId: "mental-arithmetic",
+        seed: index,
+        prompt: "fixture",
+        expectedAnswer: "1",
+        response: "1",
+        correct: true,
+        rating: null,
+        reviewedAt: `2026-01-01T00:00:0${index}.000Z`,
+      });
+    }
+
+    const page = await (await fetch(`${base}/practice`)).text();
+    expect(page).toContain("Which IEC unit equals 2^");
+    expect(page).toContain("Quick recall");
+    expect(page).toContain("inputmode=\"text\"");
+    expect(page).toContain("name=\"questionId\" value=\"binary-exponent-prefix\"");
+  });
+
+  it("accepts an in-flight submission for a retired exact-byte drill", async () => {
+    const question = generateQuestion("binary-units", 42);
+    store.getOrCreatePending(question.stableId, () => question);
+
+    const response = await fetch(`${base}/practice`, {
+      method: "POST",
+      redirect: "manual",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        questionId: question.stableId,
+        submissionId: `generated-${question.stableId}-${question.seed}`,
+        response: question.expectedAnswer,
+      }),
+    });
+
+    expect(response.status).toBe(303);
+    expect(response.headers.get("location")).toContain("result=correct");
+    expect(store.attemptCount()).toBe(1);
+  });
+
   it("rejects invalid question IDs", async () => {
     const response = await fetch(`${base}/practice`, {
       method: "POST",

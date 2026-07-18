@@ -8,9 +8,24 @@ describe("transparent interval scheduler", () => {
   });
 
   it("uses a mixed generated/static queue when nothing is due", () => {
-    const ids = Array.from({ length: 10 }, (_, position) => chooseStableId(position, [], new Date()));
+    const ids = Array.from({ length: 20 }, (_, position) => chooseStableId(position, [], new Date()));
     expect(ids).toContain("binary-prefix-exponent");
     expect(ids).toContain("binary-amount-exponent");
+    expect(ids).toContain("binary-exponent-prefix");
     expect(ids).toContain("binary-prefix-ladder");
+    expect(ids).not.toContain("binary-units");
+    expect(ids).not.toContain("decimal-units");
+  });
+
+  it.each(["binary-units", "decimal-units"])("does not resurface retired exact-byte drill %s when its old review is due", (stableId) => {
+    const retired = {
+      stableId,
+      interval: 0,
+      reviews: 2,
+      dueAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-01-01T00:00:00.000Z",
+    };
+    expect(chooseStableId(0, [retired], new Date("2026-01-02T00:00:00.000Z")))
+      .toBe("mental-arithmetic");
   });
 });

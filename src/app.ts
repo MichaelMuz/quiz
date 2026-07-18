@@ -43,9 +43,10 @@ function renderStatic(item: StaticItem, position: number, result: string | null,
 
 function renderGenerated(store: QuizStore, id: string, position: number, result: string | null, expectedAnswer: string | null, seed: () => number): string {
   const question = store.getOrCreatePending(id, () => generateQuestion(id, seed()));
-  return pageChrome(position, `<section class="card"><div class="eyebrow">Quick calculation</div><h1>${escape(question.prompt)}</h1>
+  const prefixRecall = question.grader === "iec-prefix";
+  return pageChrome(position, `<section class="card"><div class="eyebrow">${prefixRecall ? "Quick recall" : "Quick calculation"}</div><h1>${escape(question.prompt)}</h1>
     <form method="post" action="/practice"><input type="hidden" name="questionId" value="${escape(id)}"><input type="hidden" name="submissionId" value="generated-${escape(id)}-${question.seed}"><input type="hidden" name="seed" value="${question.seed}">
-    <input name="response" type="text" inputmode="numeric" autocomplete="off" maxlength="24" aria-label="Your answer" required autofocus><button>Check answer</button></form></section>`, result, expectedAnswer);
+    <input name="response" type="text" inputmode="${prefixRecall ? "text" : "numeric"}" autocomplete="off" maxlength="24" aria-label="Your answer" required autofocus><button>Check answer</button></form></section>`, result, expectedAnswer);
 }
 
 async function formBody(request: IncomingMessage): Promise<URLSearchParams> {
