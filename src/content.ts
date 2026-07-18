@@ -146,7 +146,7 @@ const generators: Record<string, (seed: number) => Omit<GeneratedQuestion, "stab
   "binary-prefix-exponent"(seed) {
     const next = random(seed);
     const prefix = binaryPrefixes[Math.floor(next() * binaryPrefixes.length)]!;
-    return { seed, prompt: `A ${prefix.unit} is 2^? bytes.`, expectedAnswer: String(prefix.exponent) };
+    return { seed, prompt: `1 ${prefix.unit} is 2^? bytes.`, expectedAnswer: String(prefix.exponent) };
   },
   "binary-amount-exponent"(seed) {
     const next = random(seed);

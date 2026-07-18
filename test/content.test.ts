@@ -87,7 +87,7 @@ describe("generated questions", () => {
     [1542, "EiB", "60"],
   ])("maps a binary IEC prefix to its exponent for seed %i", (seed, prefix, exponent) => {
     const question = generateQuestion("binary-prefix-exponent", seed);
-    expect(question.prompt).toBe(`A ${prefix} is 2^? bytes.`);
+    expect(question.prompt).toBe(`1 ${prefix} is 2^? bytes.`);
     expect(question.expectedAnswer).toBe(exponent);
     expect(gradeAnswer(question.grader, exponent, question.expectedAnswer)).toBe(true);
   });
