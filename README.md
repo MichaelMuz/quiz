@@ -1,6 +1,6 @@
 # Quiz
 
-Quiz is a tiny, phone-first practice loop for one learner. It mixes deterministic mental arithmetic and computer-unit conversions with systems, protocol, authentication, and Bash recall. It never executes shell input and never evaluates generated answers as code.
+Quiz is a tiny, phone-first practice loop for one learner. It mixes deterministic mental arithmetic and computer-unit conversions with systems, protocol, authentication, Bash, and kubectl recall. It never executes shell input and never evaluates generated answers as code.
 
 ## Run locally
 
@@ -33,7 +33,7 @@ SQLite is the canonical record for the single learner. Stop the process, then co
 
 ## Architecture
 
-The Node HTTP server renders HTML and accepts small form posts. Static content is Git-versioned in `src/content.ts`. Generated prompts use a seeded PRNG and materialize into SQLite until reviewed. Exact integer and decimal graders are registered by name, bounded, and never use `eval`. A transparent interval scheduler prefers due cards, otherwise alternating generated and static content.
+The Node HTTP server renders HTML and accepts small form posts. Static content is Git-versioned in the `src/*-content.ts` modules. Generated prompts use a seeded PRNG and materialize into SQLite until reviewed. Exact integer and decimal graders are registered by name, bounded, and never use `eval`. A transparent interval scheduler prefers due cards, otherwise alternating generated and static content.
 
 `GET /healthz` is liveness. `GET /readyz` confirms the process opened its database during startup. CI tests, typechecks, and builds every branch push (including `main`) and pull request. After those checks pass, a push to `main` builds and publishes `ghcr.io/michaelmuz/quiz:latest`, but repository owners must configure package visibility separately.
 

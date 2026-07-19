@@ -5,6 +5,7 @@ import type {
   StaticItem,
 } from "./content.js";
 import { practicalCommandConcepts } from "./practical-command-content.js";
+import { kubectlConcepts } from "./kubectl-content.js";
 
 type CommandExerciseCopy = {
   prompt: string;
@@ -268,6 +269,7 @@ export const commandConcepts: CommandConcept[] = [
     },
   },
   ...practicalCommandConcepts,
+  ...kubectlConcepts,
 ];
 
 export function commandExerciseId(command: CommandName, concept: string, mode: CommandExerciseMode): string {
