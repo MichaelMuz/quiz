@@ -26,6 +26,11 @@ describe("transparent interval scheduler", () => {
       "bash-output-append-v-truncate",
       "bash-redirection-order",
       "bash-redirection-order-reversed",
+      "bash-heredoc-basic",
+      "bash-heredoc-expansion",
+      "bash-heredoc-tab-strip",
+      "bash-here-string",
+      "bash-stdin-input-forms",
     ]) expect(ids).toContain(id);
   });
 

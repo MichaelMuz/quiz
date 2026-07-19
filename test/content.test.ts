@@ -32,6 +32,11 @@ describe("content validation", () => {
       "bash-output-append-v-truncate",
       "bash-redirection-order",
       "bash-redirection-order-reversed",
+      "bash-heredoc-basic",
+      "bash-heredoc-expansion",
+      "bash-heredoc-tab-strip",
+      "bash-here-string",
+      "bash-stdin-input-forms",
     ];
     const items = ids.map((id) => contentBank.find((candidate) => candidate.id === id));
     expect(items.every(Boolean)).toBe(true);
@@ -109,6 +114,50 @@ describe("static questions", () => {
     expect(item!.prompt).toContain("command 2>&1 >out.txt");
     expect(item!.answer).toMatch(/left to right.*fd 2.*duplicates.*fd 1.*terminal.*fd 1.*out\.txt.*fd 2.*terminal/i);
     expect(item!.correctChoice).toBe("stdout: out.txt; stderr: terminal");
+  });
+
+  it("teaches that a heredoc body feeds stdin until its delimiter line", () => {
+    const item = contentBank.find((candidate) => candidate.id === "bash-heredoc-basic");
+    expect(item).toBeDefined();
+    expect(item!.prompt).toContain("cat <<END\nalpha\nbeta\nEND");
+    expect(item!.answer).toMatch(/body.*standard input.*until.*delimiter line/i);
+    expect(item!.answer).toMatch(/delimiter.*not.*input/i);
+    expect(item!.correctChoice).toMatch(/alpha.*beta.*END.*not/i);
+  });
+
+  it("contrasts expansion for unquoted and quoted heredoc delimiters", () => {
+    const item = contentBank.find((candidate) => candidate.id === "bash-heredoc-expansion");
+    expect(item).toBeDefined();
+    expect(item!.prompt).toMatch(/<<EOF[\s\S]*<<'EOF'/);
+    expect(item!.correctChoice).toBe("First: hello world; second: hello $name");
+    expect(item!.answer).toMatch(/any part.*delimiter.*quoted/i);
+    expect(item!.answer).toMatch(/parameter.*command.*arithmetic expansion/i);
+  });
+
+  it("limits heredoc indentation stripping to leading tab characters", () => {
+    const item = contentBank.find((candidate) => candidate.id === "bash-heredoc-tab-strip");
+    expect(item).toBeDefined();
+    expect(item!.prompt).toMatch(/<<-END.*\[TAB\].*\[SPACES\]/s);
+    expect(item!.answer).toMatch(/leading tab.*body.*delimiter/i);
+    expect(item!.answer).toMatch(/ordinary spaces.*remain/i);
+    expect(item!.correctChoice).toMatch(/tab.*stripped.*spaces.*remain/i);
+  });
+
+  it("teaches that a Bash here string supplies one expanded word plus a newline to stdin", () => {
+    const item = contentBank.find((candidate) => candidate.id === "bash-here-string");
+    expect(item).toBeDefined();
+    expect(item!.prompt).toContain("cat <<< \"$name\"");
+    expect(item!.answer).toMatch(/Bash here string.*expanded.*standard input.*trailing newline/i);
+    expect(item!.correctChoice).toMatch(/two words.*trailing newline.*stdin/i);
+  });
+
+  it("contrasts stdin sources without inventing an input command", () => {
+    const item = contentBank.find((candidate) => candidate.id === "bash-stdin-input-forms");
+    expect(item).toBeDefined();
+    expect(item!.prompt).toMatch(/<input\.txt.*\|.*<<WORD.*<<< word/s);
+    expect(item!.answer).toMatch(/file.*previous command.*inline body.*expanded word/i);
+    expect(item!.answer).toMatch(/no standard.*input command/i);
+    expect(item!.answer).toMatch(/IFS= read -r/i);
   });
 });
 
