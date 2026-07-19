@@ -18,6 +18,17 @@ describe("transparent interval scheduler", () => {
     expect(ids).not.toContain("decimal-units");
   });
 
+  it("surfaces every Bash redirection card through the normal mixed queue", () => {
+    const ids = new Set(Array.from({ length: 500 }, (_, position) => chooseStableId(position, [], new Date())));
+    for (const id of [
+      "bash-fd-standard-streams",
+      "bash-file-redirection-defaults",
+      "bash-output-append-v-truncate",
+      "bash-redirection-order",
+      "bash-redirection-order-reversed",
+    ]) expect(ids).toContain(id);
+  });
+
   it("unlocks command variants in definition, read, write order", () => {
     const readId = commandExerciseId("fd", "type", "read");
     const writeId = commandExerciseId("fd", "type", "write");

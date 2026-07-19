@@ -24,6 +24,20 @@ describe("content validation", () => {
   it("accepts the shipped bank", () => {
     expect(() => validateContent(contentBank, generatedDefinitions)).not.toThrow();
   });
+
+  it("keeps the Bash redirection slice bounded, uniquely identified, and choice-gradable", () => {
+    const ids = [
+      "bash-fd-standard-streams",
+      "bash-file-redirection-defaults",
+      "bash-output-append-v-truncate",
+      "bash-redirection-order",
+      "bash-redirection-order-reversed",
+    ];
+    const items = ids.map((id) => contentBank.find((candidate) => candidate.id === id));
+    expect(items.every(Boolean)).toBe(true);
+    expect(new Set(items.map((item) => item!.id)).size).toBe(ids.length);
+    expect(items.every((item) => item!.choices?.includes(item!.correctChoice!))).toBe(true);
+  });
 });
 
 describe("static questions", () => {
@@ -53,6 +67,48 @@ describe("static questions", () => {
     expect(item!.answer).toMatch(/1024 = 2\^10/i);
     expect(item!.answer).toMatch(/KiB.*2\^10.*MiB.*2\^20.*GiB.*2\^30.*TiB.*2\^40.*PiB.*2\^50.*EiB.*2\^60/i);
     expect(item!.answer).toMatch(/GB = 10\^9.*GiB = 2\^30/i);
+  });
+
+  it("teaches the standard file descriptor mapping explicitly", () => {
+    const item = contentBank.find((candidate) => candidate.id === "bash-fd-standard-streams");
+    expect(item).toBeDefined();
+    expect(item!.prompt).toMatch(/file descriptors 0, 1, and 2/i);
+    expect(item!.answer).toMatch(/0 = standard input.*1 = standard output.*2 = standard error/i);
+    expect(item!.correctChoice).toBe("0 = stdin, 1 = stdout, 2 = stderr");
+  });
+
+  it("covers the default descriptors for input, output, and error file redirections", () => {
+    const item = contentBank.find((candidate) => candidate.id === "bash-file-redirection-defaults");
+    expect(item).toBeDefined();
+    expect(item!.prompt).toContain("command <input.txt >out.txt 2>errors.txt");
+    expect(item!.answer).toMatch(/<input\.txt.*0<input\.txt.*>out\.txt.*1>out\.txt.*2>errors\.txt/i);
+    expect(item!.correctChoice).toMatch(/stdin.*input\.txt.*stdout.*out\.txt.*stderr.*errors\.txt/i);
+  });
+
+  it("distinguishes truncating output from appending output", () => {
+    const item = contentBank.find((candidate) => candidate.id === "bash-output-append-v-truncate");
+    expect(item).toBeDefined();
+    expect(item!.prompt).toMatch(/>out\.txt[\s\S]*>>log\.txt/i);
+    expect(item!.answer).toMatch(/>.*truncates.*>>.*appends/i);
+    expect(item!.correctChoice).toMatch(/out\.txt.*replaced.*log\.txt.*kept.*added/i);
+  });
+
+  it("makes the existing stdout-then-duplication ordering example deterministic", () => {
+    const item = contentBank.find((candidate) => candidate.id === "bash-redirection-order");
+    expect(item).toBeDefined();
+    expect(item!.prompt).toMatch(/initial.*fd 1.*fd 2.*terminal/i);
+    expect(item!.prompt).toContain("command >out.txt 2>&1");
+    expect(item!.answer).toMatch(/left to right.*fd 1.*out\.txt.*fd 2.*duplicates.*current destination.*out\.txt/i);
+    expect(item!.correctChoice).toBe("stdout: out.txt; stderr: out.txt");
+  });
+
+  it("contrasts duplication-before-stdout-redirection using the initial terminal destination", () => {
+    const item = contentBank.find((candidate) => candidate.id === "bash-redirection-order-reversed");
+    expect(item).toBeDefined();
+    expect(item!.prompt).toMatch(/initial.*fd 1.*fd 2.*terminal/i);
+    expect(item!.prompt).toContain("command 2>&1 >out.txt");
+    expect(item!.answer).toMatch(/left to right.*fd 2.*duplicates.*fd 1.*terminal.*fd 1.*out\.txt.*fd 2.*terminal/i);
+    expect(item!.correctChoice).toBe("stdout: out.txt; stderr: terminal");
   });
 });
 
