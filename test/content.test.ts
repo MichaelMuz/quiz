@@ -162,6 +162,85 @@ describe("static questions", () => {
 });
 
 describe("command literacy corpus", () => {
+  it("teaches bare fzf as an interactive stdin-to-stdout selection boundary", () => {
+    const concept = commandConcepts.find((candidate) =>
+      candidate.command === "fzf" && candidate.concept === "stream-selection");
+    expect(concept).toBeDefined();
+    expect(concept!.definition.answer).toMatch(/newline-delimited.*interactive.*selected line.*standard output/i);
+    expect(concept!.read.correctChoice).toBe("src/app.ts");
+    expect(concept!.write.correctChoice).toBe("choice=$(printf '%s\\n' src/app.ts README.md | fzf)");
+    expect(commandExercises.filter((item) => item.command?.command === "fzf"
+      && item.command.concept === "stream-selection").map((item) => item.command!.mode).sort())
+      .toEqual(["definition", "read", "write"]);
+  });
+
+  it("teaches grep's regex default before fixed-string matching", () => {
+    const concept = commandConcepts.find((candidate) =>
+      candidate.command === "grep" && candidate.concept === "fixed-strings");
+    expect(concept).toBeDefined();
+    expect(concept!.definition.answer).toMatch(/basic regular expression.*-F.*literal fixed strings/i);
+    expect(concept!.read.correctChoice).toBe("a.b");
+    expect(concept!.write.correctChoice).toBe("grep -F 'a.b' data.txt");
+    expect(commandExercises.filter((item) => item.command?.command === "grep"
+      && item.command.concept === "fixed-strings").map((item) => item.command!.mode).sort())
+      .toEqual(["definition", "read", "write"]);
+  });
+
+  it("frames grep -q as an existence check rather than a complete error-reporting mode", () => {
+    const concept = commandConcepts.find((candidate) =>
+      candidate.command === "grep" && candidate.concept === "result-mode");
+    expect(concept).toBeDefined();
+    expect(concept!.definition.answer).toMatch(/boolean existence check.*rather than.*error-reporting/i);
+  });
+
+  it("teaches rg's recursive ignore-aware defaults before filtering flags", () => {
+    const concept = commandConcepts.find((candidate) =>
+      candidate.command === "rg" && candidate.concept === "default-filtering");
+    expect(concept).toBeDefined();
+    expect(concept!.definition.answer).toMatch(/recursively.*ignore files.*hidden.*binary/i);
+    expect(concept!.read.correctChoice).toBe("src/app.ts only");
+    expect(concept!.write.correctChoice).toBe("rg TODO");
+    expect(commandExercises.filter((item) => item.command?.command === "rg"
+      && item.command.concept === "default-filtering").map((item) => item.command!.mode).sort())
+      .toEqual(["definition", "read", "write"]);
+  });
+
+  it("teaches jq identity, field access, and array indexing before transformations", () => {
+    const concept = commandConcepts.find((candidate) =>
+      candidate.command === "jq" && candidate.concept === "identity-access");
+    expect(concept).toBeDefined();
+    expect(concept!.definition.answer).toMatch(/identity.*field.*array.*zero-based/i);
+    expect(concept!.read.correctChoice).toBe('"Lin"');
+    expect(concept!.write.correctChoice).toBe(".users[0].name");
+    expect(commandExercises.filter((item) => item.command?.command === "jq"
+      && item.command.concept === "identity-access").map((item) => item.command!.mode).sort())
+      .toEqual(["definition", "read", "write"]);
+  });
+
+  it("teaches awk's record and field model before programs and options", () => {
+    const concept = commandConcepts.find((candidate) =>
+      candidate.command === "awk" && candidate.concept === "records-fields");
+    expect(concept).toBeDefined();
+    expect(concept!.definition.answer).toMatch(/record.*line.*fields.*\$0.*\$1.*\$NF/i);
+    expect(concept!.read.correctChoice).toBe("alpha 10\nbeta 20");
+    expect(concept!.write.correctChoice).toBe("awk '{print $NF}' data.txt");
+    expect(commandExercises.filter((item) => item.command?.command === "awk"
+      && item.command.concept === "records-fields").map((item) => item.command!.mode).sort())
+      .toEqual(["definition", "read", "write"]);
+  });
+
+  it("teaches printf to keep data out of the format string", () => {
+    const concept = commandConcepts.find((candidate) =>
+      candidate.command === "printf" && candidate.concept === "literal-format");
+    expect(concept).toBeDefined();
+    expect(concept!.definition.answer).toMatch(/literal format string.*data.*argument.*%s\\n/i);
+    expect(concept!.read.correctChoice).toBe("%s%s");
+    expect(concept!.write.correctChoice).toBe("printf '%s\\n' \"$value\"");
+    expect(commandExercises.filter((item) => item.command?.command === "printf"
+      && item.command.concept === "literal-format").map((item) => item.command!.mode).sort())
+      .toEqual(["definition", "read", "write"]);
+  });
+
   it("ships the mandatory concepts with definition, read, and write mastery IDs", () => {
     expect(commandConcepts.map(({ command, concept }) => `${command}:${concept}`)).toEqual(expect.arrayContaining([
       "fd:type",

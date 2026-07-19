@@ -5,8 +5,18 @@ import { buildCommandProgress } from "../src/progress.js";
 describe("command mastery progress", () => {
   it("groups every concept and mode as unseen without review state", () => {
     const progress = buildCommandProgress([]);
-    expect(progress.map(({ command }) => command)).toEqual(["fd", "sed", "xargs"]);
-    expect(progress.map(({ concepts }) => concepts.length)).toEqual([3, 3, 3]);
+    expect(progress.map(({ command }) => command)).toEqual([
+      "fd",
+      "sed",
+      "xargs",
+      "fzf",
+      "grep",
+      "rg",
+      "jq",
+      "awk",
+      "printf",
+    ]);
+    expect(progress.map(({ concepts }) => concepts.length)).toEqual([3, 3, 3, 3, 5, 5, 6, 4, 3]);
     for (const command of progress) {
       for (const concept of command.concepts) {
         expect(concept.modes).toEqual({ definition: "unseen", read: "unseen", write: "unseen" });

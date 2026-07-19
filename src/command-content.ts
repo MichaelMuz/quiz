@@ -4,6 +4,7 @@ import type {
   Reference,
   StaticItem,
 } from "./content.js";
+import { practicalCommandConcepts } from "./practical-command-content.js";
 
 type CommandExerciseCopy = {
   prompt: string;
@@ -23,7 +24,7 @@ export type CommandConcept = {
   write: CommandExerciseCopy;
 };
 
-const manualReferences: Record<CommandName, Reference[]> = {
+const manualReferences: Record<"fd" | "sed" | "xargs", Reference[]> = {
   fd: [
     { label: "Manual", url: "https://man.archlinux.org/man/fd.1.en" },
     { label: "TLDR", url: "https://tldr.inbrowser.app/pages/common/fd" },
@@ -266,6 +267,7 @@ export const commandConcepts: CommandConcept[] = [
       answer: "find . -type f -print0 | xargs -0 sha256sum uses NUL at both sides of the pipeline.",
     },
   },
+  ...practicalCommandConcepts,
 ];
 
 export function commandExerciseId(command: CommandName, concept: string, mode: CommandExerciseMode): string {

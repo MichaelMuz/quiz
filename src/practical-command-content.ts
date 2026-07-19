@@ -1,0 +1,691 @@
+import type { CommandConcept } from "./command-content.js";
+
+const fzfReferences = [
+  { label: "Manual", url: "https://github.com/junegunn/fzf/blob/master/man/man1/fzf.1" },
+  { label: "TLDR", url: "https://tldr.inbrowser.app/pages/common/fzf" },
+];
+
+export const practicalCommandConcepts: CommandConcept[] = [
+  {
+    command: "fzf",
+    concept: "stream-selection",
+    label: "stdin → selection → stdout",
+    platform: "fzf on Linux and macOS",
+    references: fzfReferences,
+    definition: {
+      prompt: "What does bare fzf do in a pipeline?",
+      answer: "fzf turns newline-delimited standard input into an interactive candidate list. Typing narrows the list with fuzzy matching; accepting a candidate writes the selected line to standard output. That makes bare fzf useful as a deliberate selection boundary in a pipeline or command substitution.\n\nMemory hook: input list → interactive choice → selected output.\n\nExample: printf '%s\\n' src/app.ts README.md | fzf.",
+    },
+    read: {
+      prompt: "Input candidates:\nREADME.md\nsrc/app.ts\nsrc/store.ts\n\nCommand:\nprintf '%s\\n' README.md src/app.ts src/store.ts | fzf\n\nThe user types app, highlights src/app.ts, and presses Enter. What does fzf write to stdout?",
+      choices: ["src/app.ts", "app", "All three candidates", "Nothing; fzf only changes the terminal display"],
+      correctChoice: "src/app.ts",
+      answer: "src/app.ts. The query narrows the interactive list, while accepting emits the selected original line to stdout.",
+    },
+    write: {
+      prompt: "Choose one of two candidate paths interactively and capture the selected line in choice. Which command has an explicit selection boundary without executing the choice?",
+      choices: [
+        "choice=$(printf '%s\\n' src/app.ts README.md | fzf)",
+        "choice=$(fzf src/app.ts README.md)",
+        "printf '%s\\n' src/app.ts README.md | $choice",
+        "$(printf '%s\\n' src/app.ts README.md | fzf)",
+      ],
+      correctChoice: "choice=$(printf '%s\\n' src/app.ts README.md | fzf)",
+      answer: "choice=$(printf '%s\\n' src/app.ts README.md | fzf) captures the selected line as data. It does not execute that line.",
+    },
+  },
+  {
+    command: "fzf",
+    concept: "multi-select",
+    label: "-m / --multi[=MAX]",
+    platform: "fzf on Linux and macOS",
+    references: fzfReferences,
+    definition: {
+      prompt: "What does fzf -m or --multi do?",
+      answer: "It enables selecting multiple candidates, normally with Tab and Shift-Tab. --multi=MAX optionally caps the number selected. Accepted selections are written as separate output lines.\n\nMemory hook: m = multiple selections.",
+    },
+    read: {
+      prompt: "Input candidates:\napi.log\napp.log\nnotes.md\n\nCommand:\nfzf --multi\n\nThe user selects api.log and app.log, then accepts. What is emitted?",
+      choices: ["api.log\napp.log", "api.log app.log on one line", "Only app.log", "All three candidates"],
+      correctChoice: "api.log\napp.log",
+      answer: "api.log and app.log are emitted as two output lines. --multi changes the selection count, not the candidate text.",
+    },
+    write: {
+      prompt: "Allow at most two interactive selections from stdin. Which flag fragment expresses that?",
+      choices: ["--multi=2", "--query=2", "--filter=2", "--select-2"],
+      correctChoice: "--multi=2",
+      answer: "--multi=2 enables multi-select and caps the selection at two items.",
+    },
+  },
+  {
+    command: "fzf",
+    concept: "initial-query",
+    label: "-q / --query",
+    platform: "fzf on Linux and macOS",
+    references: fzfReferences,
+    definition: {
+      prompt: "What does fzf -q STR or --query STR do, and how does it differ from --filter STR?",
+      answer: "--query starts the interactive finder with STR already entered, so the user can edit the query and choose a result. --filter performs noninteractive filtering and does not open the finder.\n\nMemory hook: q = initial query, not a final answer.",
+    },
+    read: {
+      prompt: "Input candidates:\nREADME.md\nsrc/app.ts\nsrc/store.ts\n\nCommand:\nfzf --query src\n\nWhat happens next?",
+      choices: [
+        "The interactive finder opens with src as the initial query",
+        "Every fuzzy match is printed immediately without interaction",
+        "fzf searches a file named src",
+        "src is appended to each candidate",
+      ],
+      correctChoice: "The interactive finder opens with src as the initial query",
+      answer: "The interactive finder opens with src prefilled. The user may refine it or accept a selected candidate; --filter would be the noninteractive mode.",
+    },
+    write: {
+      prompt: "Open fzf interactively with error already entered as the starting query. Which fragment fits?",
+      choices: ["--query error", "--filter error", "--multi error", "--prompt-only error"],
+      correctChoice: "--query error",
+      answer: "--query error preloads an editable interactive query. --filter error would skip the interactive finder.",
+    },
+  },
+  {
+    command: "grep",
+    concept: "fixed-strings",
+    label: "-F / --fixed-strings",
+    platform: "grep on GNU/Linux and BSD/macOS",
+    references: [
+      { label: "Manual", url: "https://www.gnu.org/software/grep/manual/grep.html" },
+      { label: "TLDR", url: "https://tldr.inbrowser.app/pages/common/grep" },
+    ],
+    definition: {
+      prompt: "How does grep interpret a pattern by default, and what does -F change?",
+      answer: "grep interprets its pattern as a basic regular expression by default. -F, or --fixed-strings, treats the pattern as one or more literal fixed strings, so characters such as . and * lose their regex meaning.\n\nMemory hook: F = fixed, literal text.",
+    },
+    read: {
+      prompt: "Input file data.txt:\na.b\nacb\na-b\n\nCommand:\ngrep -F 'a.b' data.txt\n\nWhat is printed?",
+      choices: ["a.b", "a.b\nacb\na-b", "acb", "Nothing"],
+      correctChoice: "a.b",
+      answer: "a.b. -F makes the dot literal; without -F, the basic regular expression a.b also matches acb and a-b.",
+    },
+    write: {
+      prompt: "Find the literal text a.b in data.txt, without treating the dot as a regex metacharacter. Which command fits?",
+      choices: ["grep -F 'a.b' data.txt", "grep 'a.b' data.txt", "grep -v 'a.b' data.txt", "grep -r 'a.b' data.txt"],
+      correctChoice: "grep -F 'a.b' data.txt",
+      answer: "grep -F 'a.b' data.txt performs fixed-string matching.",
+    },
+  },
+  {
+    command: "grep",
+    concept: "case-and-invert",
+    label: "-i / --ignore-case; -v / --invert-match",
+    platform: "Portable short forms; GNU and BSD/macOS",
+    references: [
+      { label: "Manual", url: "https://www.gnu.org/software/grep/manual/grep.html" },
+      { label: "TLDR", url: "https://tldr.inbrowser.app/pages/common/grep" },
+    ],
+    definition: {
+      prompt: "What do grep -i and grep -v change?",
+      answer: "-i ignores case distinctions while matching. -v selects nonmatching lines instead of matching lines. They compose: grep -iv warning selects lines that do not match warning in any case.\n\nMemory hooks: i = ignore case; v = invert the selected set.",
+    },
+    read: {
+      prompt: "Input:\nINFO ready\nWarning hot\nERROR disk\nwarning retry\n\nCommand:\ngrep -iv warning\n\nWhat is printed?",
+      choices: ["INFO ready\nERROR disk", "Warning hot\nwarning retry", "INFO ready\nWarning hot\nERROR disk", "Nothing"],
+      correctChoice: "INFO ready\nERROR disk",
+      answer: "INFO ready and ERROR disk. -i matches both spellings of warning, then -v selects the other lines.",
+    },
+    write: {
+      prompt: "Select lines that do not contain TODO in any letter case. Which flag fragment fits?",
+      choices: ["-iv TODO", "-i TODO", "-v TODO", "-Fv todo"],
+      correctChoice: "-iv TODO",
+      answer: "-iv TODO combines case-insensitive matching with inverted selection.",
+    },
+  },
+  {
+    command: "grep",
+    concept: "line-context",
+    label: "-n with -C NUM",
+    platform: "Common GNU and BSD/macOS behavior",
+    references: [
+      { label: "Manual", url: "https://www.gnu.org/software/grep/manual/grep.html" },
+      { label: "TLDR", url: "https://tldr.inbrowser.app/pages/common/grep" },
+    ],
+    definition: {
+      prompt: "What do grep -n and -C NUM add to matching output?",
+      answer: "-n prefixes selected lines with their 1-based input line number. -C NUM includes NUM lines of leading and trailing context around each match; context lines are marked separately from matching lines.\n\nMemory hooks: n = number; C = context on both sides.",
+    },
+    read: {
+      prompt: "Input file app.log:\nready\nworking\nERROR disk\nretrying\ndone\n\nCommand:\ngrep -n -C 1 ERROR app.log\n\nWhich lines appear?",
+      choices: ["2-working\n3:ERROR disk\n4-retrying", "3:ERROR disk only", "1-ready through 5-done", "2:working\n3:ERROR disk"],
+      correctChoice: "2-working\n3:ERROR disk\n4-retrying",
+      answer: "The match at line 3 plus one line before and after appears. grep commonly uses : for a matching line and - for context lines.",
+    },
+    write: {
+      prompt: "Show line numbers and two lines of context on both sides of ERROR. Which flags fit?",
+      choices: ["-n -C 2", "-n -A 2", "-C -2", "-l -C 2"],
+      correctChoice: "-n -C 2",
+      answer: "-n -C 2 adds line numbers and two lines of leading and trailing context.",
+    },
+  },
+  {
+    command: "grep",
+    concept: "recursive-search",
+    label: "-r / --recursive",
+    platform: "Common GNU and BSD/macOS behavior",
+    references: [
+      { label: "Manual", url: "https://www.gnu.org/software/grep/manual/grep.html" },
+      { label: "TLDR", url: "https://tldr.inbrowser.app/pages/common/grep" },
+    ],
+    definition: {
+      prompt: "What does grep -r do?",
+      answer: "It searches files recursively under each directory operand. Plain grep does not recursively traverse a directory by default. Recursive symlink details vary, so use the common -r behavior for ordinary directory trees.\n\nMemory hook: r = recursive directories.",
+    },
+    read: {
+      prompt: "Tree:\nREADME.md       contains TODO\nsrc/app.ts      contains TODO\nsrc/store.ts    contains DONE\n\nCommand:\ngrep -r TODO .\n\nWhich files contribute matches?",
+      choices: ["README.md and src/app.ts", "README.md only", "src/app.ts only", "All three files"],
+      correctChoice: "README.md and src/app.ts",
+      answer: "README.md and src/app.ts. -r descends into src; matching output normally includes filenames when searching multiple files.",
+    },
+    write: {
+      prompt: "Search the current directory tree for FIXME with grep. Which command fits?",
+      choices: ["grep -r FIXME .", "grep FIXME .", "grep -F . FIXME", "grep -C FIXME ."],
+      correctChoice: "grep -r FIXME .",
+      answer: "grep -r FIXME . recursively searches files beneath the current directory.",
+    },
+  },
+  {
+    command: "grep",
+    concept: "result-mode",
+    label: "-l / --files-with-matches; -q / --quiet",
+    platform: "Portable short forms; GNU and BSD/macOS",
+    references: [
+      { label: "Manual", url: "https://www.gnu.org/software/grep/manual/grep.html" },
+      { label: "TLDR", url: "https://tldr.inbrowser.app/pages/common/grep" },
+    ],
+    definition: {
+      prompt: "When should you use grep -l versus grep -q?",
+      answer: "-l prints only the name of each input file that has a match. -q prints no normal output and communicates whether a match exists through exit status: 0 for a selected line, or 1 when no line was selected and no error occurred. Because -q may return 0 as soon as it finds a match even if another input has an error, use it as a boolean existence check rather than a complete error-reporting mode.\n\nMemory hooks: l = list matching files; q = quiet status check.",
+    },
+    read: {
+      prompt: "a.txt and c.txt contain TODO; b.txt does not.\n\nCommand:\ngrep -l TODO a.txt b.txt c.txt\n\nWhat is printed?",
+      choices: ["a.txt\nc.txt", "The matching TODO lines", "a.txt\nb.txt\nc.txt", "Nothing"],
+      correctChoice: "a.txt\nc.txt",
+      answer: "a.txt and c.txt. -l reports each matching filename once and suppresses matching line text.",
+    },
+    write: {
+      prompt: "In an if condition, test silently whether config.ini contains enabled. Which command is intended for that status-only check?",
+      choices: ["grep -q enabled config.ini", "grep -l enabled config.ini", "grep -n enabled config.ini", "grep -v enabled config.ini"],
+      correctChoice: "grep -q enabled config.ini",
+      answer: "grep -q enabled config.ini suppresses normal output and leaves the result in grep's exit status.",
+    },
+  },
+  {
+    command: "rg",
+    concept: "default-filtering",
+    label: "recursive, ignore-aware defaults",
+    platform: "ripgrep on Linux and macOS",
+    references: [
+      { label: "Guide", url: "https://github.com/BurntSushi/ripgrep/blob/master/GUIDE.md" },
+      { label: "TLDR", url: "https://tldr.inbrowser.app/pages/common/rg" },
+    ],
+    definition: {
+      prompt: "What does rg PATTERN do by default when run in a project directory?",
+      answer: "rg searches files recursively from the current directory. Its automatic filtering respects ignore files such as .gitignore and skips hidden files and binary files by default. This differs from grep, where recursion must be requested and project ignore rules are not a default feature.\n\nMemory hook: rg starts project-aware and recursive.",
+    },
+    read: {
+      prompt: "Project tree:\nsrc/app.ts        contains TODO\nignored.log       contains TODO; listed in .gitignore\n.env              contains TODO; hidden\nimage.bin         contains TODO bytes; binary\n\nCommand:\nrg TODO\n\nWhich fixture file contributes a match under default filtering?",
+      choices: ["src/app.ts only", "src/app.ts and ignored.log", "All four files", ".env only"],
+      correctChoice: "src/app.ts only",
+      answer: "src/app.ts only. Default rg search is recursive and filters ignored, hidden, and binary files.",
+    },
+    write: {
+      prompt: "Recursively search the current project for TODO while honoring rg's normal ignore and hidden-file defaults. Which complete command is enough?",
+      choices: ["rg TODO", "grep TODO", "grep -r TODO .", "rg --hidden --no-ignore TODO"],
+      correctChoice: "rg TODO",
+      answer: "rg TODO uses ripgrep's recursive, ignore-aware defaults without extra flags.",
+    },
+  },
+  {
+    command: "rg",
+    concept: "glob-filter",
+    label: "-g / --glob",
+    platform: "ripgrep on Linux and macOS",
+    references: [
+      { label: "Guide", url: "https://github.com/BurntSushi/ripgrep/blob/master/GUIDE.md" },
+      { label: "TLDR", url: "https://tldr.inbrowser.app/pages/common/rg" },
+    ],
+    definition: {
+      prompt: "What does rg -g GLOB do, including a glob that starts with !?",
+      answer: "-g, or --glob, includes or excludes paths using glob rules. A glob beginning with ! excludes matching paths. Multiple -g rules compose, which is useful for including a file family while excluding generated or test files.\n\nMemory hook: g = glob over paths.",
+    },
+    read: {
+      prompt: "Each file contains TODO:\nsrc/app.ts\nsrc/app.test.ts\nsrc/app.js\n\nCommand:\nrg TODO -g '*.ts' -g '!*.test.ts'\n\nWhich file is searched?",
+      choices: ["src/app.ts only", "Both TypeScript files", "src/app.js only", "All three files"],
+      correctChoice: "src/app.ts only",
+      answer: "src/app.ts only. The first glob includes TypeScript paths; the second excludes paths ending in .test.ts.",
+    },
+    write: {
+      prompt: "Search for TODO only in Markdown paths. Which rg fragment fits?",
+      choices: ["-g '*.md' TODO", "-t '*.md' TODO", "--hidden '*.md' TODO", "-F '*.md' TODO"],
+      correctChoice: "-g '*.md' TODO",
+      answer: "-g '*.md' TODO applies a path glob while TODO remains the search pattern.",
+    },
+  },
+  {
+    command: "rg",
+    concept: "type-filter",
+    label: "-t TYPE / --type TYPE",
+    platform: "ripgrep on Linux and macOS",
+    references: [
+      { label: "Guide", url: "https://github.com/BurntSushi/ripgrep/blob/master/GUIDE.md" },
+      { label: "TLDR", url: "https://tldr.inbrowser.app/pages/common/rg" },
+    ],
+    definition: {
+      prompt: "How does rg -t TYPE differ from writing one filename glob?",
+      answer: "-t TYPE restricts search to a named file type defined by ripgrep, where one type may represent several related globs. Use rg --type-list to inspect available names. For example, -t rust covers Rust source paths.\n\nMemory hook: t = named file type.",
+    },
+    read: {
+      prompt: "Files containing parse:\nsrc/main.rs\nsrc/lib.rs\ndocs/parse.md\n\nCommand:\nrg -t rust parse\n\nWhich files can produce matches?",
+      choices: ["src/main.rs and src/lib.rs", "docs/parse.md only", "All three files", "No files"],
+      correctChoice: "src/main.rs and src/lib.rs",
+      answer: "The two Rust files. -t rust applies ripgrep's registered Rust file-type globs.",
+    },
+    write: {
+      prompt: "Search Python files for import using ripgrep's named type. Which command fits?",
+      choices: ["rg -t py import", "rg -g py import", "rg -F py import", "rg --hidden py import"],
+      correctChoice: "rg -t py import",
+      answer: "rg -t py import restricts the search to ripgrep's py file type.",
+    },
+  },
+  {
+    command: "rg",
+    concept: "hidden-files",
+    label: "--hidden",
+    platform: "ripgrep on Linux and macOS",
+    references: [
+      { label: "Guide", url: "https://github.com/BurntSushi/ripgrep/blob/master/GUIDE.md" },
+      { label: "TLDR", url: "https://tldr.inbrowser.app/pages/common/rg" },
+    ],
+    definition: {
+      prompt: "What does rg --hidden change, and what does it not change?",
+      answer: "--hidden allows hidden files and directories to be searched. It does not disable ignore rules, so an ignored hidden path remains excluded unless ignore filtering is changed separately.\n\nMemory hook: --hidden opens the hidden-file gate only.",
+    },
+    read: {
+      prompt: "Both files contain alias:\n.bashrc            hidden, not ignored\n.cache/tool.conf    hidden and ignored by .gitignore\n\nCommand:\nrg --hidden alias\n\nWhich path contributes a match?",
+      choices: [".bashrc only", "Both hidden paths", ".cache/tool.conf only", "Neither path"],
+      correctChoice: ".bashrc only",
+      answer: ".bashrc only. --hidden includes hidden paths, but normal ignore filtering still excludes .cache/tool.conf.",
+    },
+    write: {
+      prompt: "Include nonignored dotfiles in a normal rg search for PATH. Which flag is sufficient?",
+      choices: ["--hidden", "--no-ignore", "-g '!.*'", "-F"],
+      correctChoice: "--hidden",
+      answer: "--hidden includes hidden paths while retaining normal ignore-file behavior.",
+    },
+  },
+  {
+    command: "rg",
+    concept: "matching-mode",
+    label: "-F / --fixed-strings; -S / --smart-case",
+    platform: "ripgrep on Linux and macOS",
+    references: [
+      { label: "Guide", url: "https://github.com/BurntSushi/ripgrep/blob/master/GUIDE.md" },
+      { label: "TLDR", url: "https://tldr.inbrowser.app/pages/common/rg" },
+    ],
+    definition: {
+      prompt: "What do rg -F and rg -S change about matching?",
+      answer: "-F treats the pattern as literal text instead of a regular expression. -S enables smart case: an all-lowercase pattern is case-insensitive, while a pattern containing an uppercase letter is case-sensitive. ripgrep is otherwise case-sensitive by default.\n\nMemory hooks: F = fixed text; S = smart case.",
+    },
+    read: {
+      prompt: "Input:\nerror code a.b\nERROR code acb\n\nCommand:\nrg -F -S 'a.b'\n\nWhat is printed?",
+      choices: ["error code a.b", "Both lines", "ERROR code acb", "Nothing"],
+      correctChoice: "error code a.b",
+      answer: "error code a.b. -F makes the dot literal. The lowercase pattern makes -S case-insensitive, but the second line still lacks literal a.b.",
+    },
+    write: {
+      prompt: "Search literal text [done] with smart-case behavior. Which flags fit?",
+      choices: ["-F -S '[done]'", "-i '[done]'", "-g '[done]'", "-t '[done]'"],
+      correctChoice: "-F -S '[done]'",
+      answer: "-F keeps the brackets literal and -S selects smart-case matching.",
+    },
+  },
+  {
+    command: "jq",
+    concept: "identity-access",
+    label: "., .field, .[index]",
+    platform: "jq on Linux and macOS",
+    references: [
+      { label: "Manual", url: "https://jqlang.org/manual/" },
+      { label: "TLDR", url: "https://tldr.inbrowser.app/pages/common/jq" },
+    ],
+    definition: {
+      prompt: "What do jq filters ., .field, and .[index] mean?",
+      answer: ". is the identity filter: it returns its input value. .field reads an object field, and .[index] reads an array element by zero-based index. Accessors compose, so .users[0].name follows an object field, an array index, then another field.\n\nMemory hook: each dot continues from the current JSON value.",
+    },
+    read: {
+      prompt: "JSON input:\n{\"users\":[{\"name\":\"Ada\"},{\"name\":\"Lin\"}]}\n\nFilter:\n.users[1].name\n\nWhat JSON value does jq emit?",
+      choices: ['"Lin"', '"Ada"', '{"name":"Lin"}', "null"],
+      correctChoice: '"Lin"',
+      answer: '"Lin". Array indexes are zero-based, so [1] selects the second user. Without -r, a JSON string is printed with quotes.',
+    },
+    write: {
+      prompt: "Select the name of the first object in the users array. Which jq filter fits?",
+      choices: [".users[0].name", ".users.1.name", ".users[].0.name", ".[users][1][name]"],
+      correctChoice: ".users[0].name",
+      answer: ".users[0].name follows the users field, first array element, and name field.",
+    },
+  },
+  {
+    command: "jq",
+    concept: "iteration-pipe",
+    label: ".[] and filter | filter",
+    platform: "jq on Linux and macOS",
+    references: [
+      { label: "Manual", url: "https://jqlang.org/manual/" },
+      { label: "TLDR", url: "https://tldr.inbrowser.app/pages/common/jq" },
+    ],
+    definition: {
+      prompt: "How do jq's .[] iterator and | filter pipe work together?",
+      answer: ".[] emits each array element or object value as a separate result. jq's | feeds every result from the left filter into the right filter; it is filter composition inside jq, not the shell pipe between processes.\n\nMemory hook: .[] fans out; | keeps transforming each result.",
+    },
+    read: {
+      prompt: "JSON input:\n{\"users\":[{\"name\":\"Ada\"},{\"name\":\"Lin\"}]}\n\nFilter:\n.users[] | .name\n\nWhat values are emitted, in order?",
+      choices: ['"Ada"\n"Lin"', '["Ada","Lin"]', '{"name":"Ada"}\n{"name":"Lin"}', '"AdaLin"'],
+      correctChoice: '"Ada"\n"Lin"',
+      answer: 'The iterator emits two user objects; .name then emits two JSON strings: "Ada" followed by "Lin". No array is constructed automatically.',
+    },
+    write: {
+      prompt: "Emit the id from every object in .items as separate jq results. Which filter fits?",
+      choices: [".items[] | .id", ".items.id[]", "[.items.id]", ".items | id"],
+      correctChoice: ".items[] | .id",
+      answer: ".items[] emits each item, then | .id extracts each id.",
+    },
+  },
+  {
+    command: "jq",
+    concept: "select",
+    label: "select(condition)",
+    platform: "jq on Linux and macOS",
+    references: [
+      { label: "Manual", url: "https://jqlang.org/manual/" },
+      { label: "TLDR", url: "https://tldr.inbrowser.app/pages/common/jq" },
+    ],
+    definition: {
+      prompt: "What does jq select(condition) do in a filter pipeline?",
+      answer: "select(condition) passes through its input unchanged when the condition is true and emits no result when false. It filters a stream of JSON values, so it is commonly placed after .[] and before further field extraction.\n\nMemory hook: select keeps the current value when the test passes.",
+    },
+    read: {
+      prompt: "JSON input:\n[{\"name\":\"Ada\",\"active\":true},{\"name\":\"Lin\",\"active\":false}]\n\nFilter:\n.[] | select(.active) | .name\n\nWhat is emitted?",
+      choices: ['"Ada"', '"Lin"', '["Ada"]', "true"],
+      correctChoice: '"Ada"',
+      answer: 'Only the Ada object passes select(.active), then .name emits the JSON string "Ada".',
+    },
+    write: {
+      prompt: "From a stream of objects, keep only objects whose .status equals \"ready\". Which fragment fits?",
+      choices: ["select(.status == \"ready\")", "map(.status = \"ready\")", ".status | ready", "select(.status = \"ready\")"],
+      correctChoice: "select(.status == \"ready\")",
+      answer: "select(.status == \"ready\") compares the field and preserves only passing input objects.",
+    },
+  },
+  {
+    command: "jq",
+    concept: "map-construction",
+    label: "map(filter) and {key: value}",
+    platform: "jq on Linux and macOS",
+    references: [
+      { label: "Manual", url: "https://jqlang.org/manual/" },
+      { label: "TLDR", url: "https://tldr.inbrowser.app/pages/common/jq" },
+    ],
+    definition: {
+      prompt: "What does jq map(filter) return, and how does object construction fit?",
+      answer: "map(filter) applies the filter to every element of an input array and collects all emitted results into a new array. An expression such as {user: .name, enabled: .active} constructs a new object from the current value.\n\nMemory hook: map transforms elements and keeps them wrapped in an array.",
+    },
+    read: {
+      prompt: "JSON input:\n[{\"name\":\"Ada\",\"active\":true},{\"name\":\"Lin\",\"active\":false}]\n\nFilter:\nmap({user: .name, enabled: .active})\n\nWhich JSON value results?",
+      choices: [
+        '[{"user":"Ada","enabled":true},{"user":"Lin","enabled":false}]',
+        '{"user":"Ada","enabled":true}\n{"user":"Lin","enabled":false}',
+        '["Ada","Lin"]',
+        '{"Ada":true,"Lin":false}',
+      ],
+      correctChoice: '[{"user":"Ada","enabled":true},{"user":"Lin","enabled":false}]',
+      answer: "map constructs one replacement object per input element and collects both objects into a new array.",
+    },
+    write: {
+      prompt: "Turn an array of user objects into an array containing only each user's id. Which jq filter fits?",
+      choices: ["map(.id)", ".[] | .id", "select(.id)", "{id: .id}"],
+      correctChoice: "map(.id)",
+      answer: "map(.id) applies .id to each array element and returns the collected array.",
+    },
+  },
+  {
+    command: "jq",
+    concept: "raw-output",
+    label: "-r / --raw-output",
+    platform: "jq on Linux and macOS",
+    references: [
+      { label: "Manual", url: "https://jqlang.org/manual/" },
+      { label: "TLDR", url: "https://tldr.inbrowser.app/pages/common/jq" },
+    ],
+    definition: {
+      prompt: "What changes when jq uses -r or --raw-output?",
+      answer: "When a filter result is a JSON string, -r writes the string's contents directly instead of JSON-encoding it with quotes and escapes. Non-string values remain JSON values. This is useful when jq feeds a text-oriented command.\n\nMemory hook: r = raw string text.",
+    },
+    read: {
+      prompt: "JSON input:\n{\"name\":\"Ada Lovelace\"}\n\nCommands:\njq '.name'\njq -r '.name'\n\nWhat does each print?",
+      choices: ['First: "Ada Lovelace"; second: Ada Lovelace', "Both: Ada Lovelace", 'Both: "Ada Lovelace"', "First: Ada Lovelace; second: an object"],
+      correctChoice: 'First: "Ada Lovelace"; second: Ada Lovelace',
+      answer: "Without -r, jq emits a JSON string with quotes. With -r, it emits the string contents as text.",
+    },
+    write: {
+      prompt: "Emit .path as plain text for a downstream text command. Which jq command fits?",
+      choices: ["jq -r '.path'", "jq -c '.path'", "jq -s '.path'", "jq --arg '.path'"],
+      correctChoice: "jq -r '.path'",
+      answer: "jq -r '.path' removes JSON string quoting from string results.",
+    },
+  },
+  {
+    command: "jq",
+    concept: "arg-injection",
+    label: "--arg name value",
+    platform: "jq on Linux and macOS",
+    references: [
+      { label: "Manual", url: "https://jqlang.org/manual/" },
+      { label: "TLDR", url: "https://tldr.inbrowser.app/pages/common/jq" },
+    ],
+    definition: {
+      prompt: "Why use jq --arg name value instead of interpolating shell text into a jq program?",
+      answer: "--arg binds value as a JSON string available inside the jq program as $name. It preserves quoting and keeps external data separate from jq source text. Even a numeric-looking value is bound as a string; use --argjson when the input is trusted JSON that should retain its JSON type.\n\nMemory hook: --arg passes one shell argument safely into one jq variable.",
+    },
+    read: {
+      prompt: "Shell variable:\nrole='ops admin'\n\nJSON input:\n{\"name\":\"Ada\"}\n\nCommand:\njq --arg role \"$role\" '.role = $role'\n\nWhich JSON value results?",
+      choices: ['{"name":"Ada","role":"ops admin"}', '{"name":"Ada","role":ops admin}', '"ops admin"', '{"name":"Ada"}'],
+      correctChoice: '{"name":"Ada","role":"ops admin"}',
+      answer: "The object gains a JSON string field role with value ops admin. --arg handles the space and JSON string encoding.",
+    },
+    write: {
+      prompt: "Bind shell variable $team as jq string variable $team, then select matching objects. Which prefix is correct?",
+      choices: ["jq --arg team \"$team\" 'select(.team == $team)'", "jq 'select(.team == $team)' \"$team\"", "jq --argjson team '$team'", "jq \"select(.team == $team)\""],
+      correctChoice: "jq --arg team \"$team\" 'select(.team == $team)'",
+      answer: "--arg team \"$team\" binds the shell value as jq variable $team while the single-quoted jq program remains source text.",
+    },
+  },
+  {
+    command: "awk",
+    concept: "records-fields",
+    label: "$0, $1 … $NF",
+    platform: "Portable awk on Linux and macOS",
+    references: [
+      { label: "POSIX", url: "https://pubs.opengroup.org/onlinepubs/9799919799/utilities/awk.html" },
+      { label: "TLDR", url: "https://tldr.inbrowser.app/pages/common/awk" },
+    ],
+    definition: {
+      prompt: "What are records and fields in awk, and what do $0, $1, and $NF mean?",
+      answer: "An awk record is normally one input line, split into fields on runs of whitespace. $0 is the whole current record, $1 is its first field, and $NF is its last field because NF stores the field count.\n\nMemory hook: $0 = all of this record; $1 starts fields; $NF follows the number of fields.",
+    },
+    read: {
+      prompt: "Input file data.txt:\nalpha 7 10\nbeta 8 20\n\nCommand:\nawk '{print $1, $NF}' data.txt\n\nWhat is printed?",
+      choices: ["alpha 10\nbeta 20", "alpha 7\nbeta 8", "7 10\n8 20", "The complete original lines"],
+      correctChoice: "alpha 10\nbeta 20",
+      answer: "alpha 10 and beta 20. $1 is the first field, $NF is the last, and print separates arguments with awk's output field separator, a space by default.",
+    },
+    write: {
+      prompt: "Print only the last whitespace-separated field of each record in data.txt. Which command fits?",
+      choices: ["awk '{print $NF}' data.txt", "awk '{print NF}' data.txt", "awk '{print $0}' data.txt", "awk '{print $1}' data.txt"],
+      correctChoice: "awk '{print $NF}' data.txt",
+      answer: "awk '{print $NF}' data.txt prints the field whose number is the current NF value.",
+    },
+  },
+  {
+    command: "awk",
+    concept: "input-parameters",
+    label: "-F separator and -v name=value",
+    platform: "Portable awk on Linux and macOS",
+    references: [
+      { label: "POSIX", url: "https://pubs.opengroup.org/onlinepubs/9799919799/utilities/awk.html" },
+      { label: "TLDR", url: "https://tldr.inbrowser.app/pages/common/awk" },
+    ],
+    definition: {
+      prompt: "What do awk -F separator and -v name=value provide to a program?",
+      answer: "-F sets the input field separator before records are split. -v assigns an awk variable before the program runs, keeping shell-supplied data outside the awk source text. Both options appear before the awk program.\n\nMemory hooks: F = field separator; v = variable value.",
+    },
+    read: {
+      prompt: "Input:\napi,503\nweb,200\n\nCommand:\nawk -F, -v limit=500 '$2 >= limit {print $1}'\n\nWhat is printed?",
+      choices: ["api", "web", "api,503", "Nothing"],
+      correctChoice: "api",
+      answer: "api. -F, makes the numeric status the second field, and -v limit=500 supplies the comparison threshold.",
+    },
+    write: {
+      prompt: "For colon-separated input, pass shell value $minimum into awk variable min safely. Which option prefix fits?",
+      choices: ["awk -F: -v min=\"$minimum\"", "awk -v: -F min=\"$minimum\"", "awk '$minimum' -F:", "awk -F min:minimum"],
+      correctChoice: "awk -F: -v min=\"$minimum\"",
+      answer: "-F: sets the separator and -v min=\"$minimum\" assigns the shell argument to awk variable min before the program runs.",
+    },
+  },
+  {
+    command: "awk",
+    concept: "pattern-action",
+    label: "pattern { action }",
+    platform: "Portable awk on Linux and macOS",
+    references: [
+      { label: "POSIX", url: "https://pubs.opengroup.org/onlinepubs/9799919799/utilities/awk.html" },
+      { label: "TLDR", url: "https://tldr.inbrowser.app/pages/common/awk" },
+    ],
+    definition: {
+      prompt: "How does awk's pattern { action } structure process input?",
+      answer: "For each input record, awk evaluates the pattern and runs the action only when the pattern is true. With no pattern, an action runs for every record. With a pattern but no action, awk performs the default action { print $0 }.\n\nMemory hook: test this record, then act on this record.",
+    },
+    read: {
+      prompt: "Input:\napi 503\nweb 200\nworker 502\n\nCommand:\nawk '$2 >= 500 {print $1}'\n\nWhat is printed?",
+      choices: ["api\nworker", "web", "503\n502", "All three lines"],
+      correctChoice: "api\nworker",
+      answer: "api and worker. The action prints field 1 only for records whose second field is at least 500.",
+    },
+    write: {
+      prompt: "Print complete records whose third field equals ready. Which awk program fits?",
+      choices: ["'$3 == \"ready\" {print $0}'", "'{print $3 == \"ready\"}'", "'$0 {print $3}'", "'$3 = \"ready\"'"],
+      correctChoice: "'$3 == \"ready\" {print $0}'",
+      answer: "$3 == \"ready\" is the pattern; {print $0} prints each matching complete record.",
+    },
+  },
+  {
+    command: "awk",
+    concept: "begin-end-aggregate",
+    label: "BEGIN, END, sum, and printf",
+    platform: "Portable awk on Linux and macOS",
+    references: [
+      { label: "POSIX", url: "https://pubs.opengroup.org/onlinepubs/9799919799/utilities/awk.html" },
+      { label: "TLDR", url: "https://tldr.inbrowser.app/pages/common/awk" },
+    ],
+    definition: {
+      prompt: "When do awk BEGIN and END actions run, and how do they support aggregation?",
+      answer: "BEGIN actions run before input records are read, which is useful for initialization or headers. Ordinary actions can accumulate values for each record. END actions run after input is exhausted, which is useful for totals. awk printf uses an explicit format string for controlled output.\n\nMemory hook: BEGIN sets up; records accumulate; END reports.",
+    },
+    read: {
+      prompt: `Input:\napi,3\nweb,7\n\nCommand:\nawk -F, 'BEGIN {sum=0} {sum += $2} END {printf "total=%d\\n", sum}'\n\nWhat is printed?`,
+      choices: ["total=10", "total=3\ntotal=7", "10.000000", "api,3\nweb,7"],
+      correctChoice: "total=10",
+      answer: "total=10 followed by a newline. BEGIN initializes sum, each record adds field 2, and END formats the final total once.",
+    },
+    write: {
+      prompt: "Count records and print one final line count=N. Which awk program fits?",
+      choices: ["'{count++} END {printf \"count=%d\\n\", count}'", "'BEGIN {print NR}'", "'{printf \"count=%d\\n\", NR}'", "'END {print $NF}'"],
+      correctChoice: "'{count++} END {printf \"count=%d\\n\", count}'",
+      answer: "The ordinary action increments once per record; END prints the final count once with a literal format string.",
+    },
+  },
+  {
+    command: "printf",
+    concept: "literal-format",
+    label: "printf '%s\\n' \"$value\"",
+    platform: "Portable shell printf; Linux and macOS",
+    references: [
+      { label: "POSIX", url: "https://pubs.opengroup.org/onlinepubs/9799919799/utilities/printf.html" },
+      { label: "Bash manual", url: "https://www.gnu.org/software/bash/manual/html_node/Bash-Builtins.html#index-printf" },
+    ],
+    definition: {
+      prompt: "Why should shell printf use a literal format string and pass data as arguments?",
+      answer: "A literal format string keeps percent conversions and backslash escapes under the program's control, while data stays in an argument consumed by %s. The portable line-printing idiom printf '%s\\n' \"$value\" prints the value as data and then a newline. Using printf \"$value\" instead lets percent signs or backslashes in the value become formatting instructions.\n\nMemory hook: format is code; arguments are data.",
+    },
+    read: {
+      prompt: "Shell value:\nvalue='%s%s'\n\nCommand:\nprintf '%s\\n' \"$value\"\n\nWhat line is printed?",
+      choices: ["%s%s", "Two empty strings", "%s", "printf reports two missing arguments"],
+      correctChoice: "%s%s",
+      answer: "%s%s is printed literally, followed by a newline. The only active conversion is the trusted outer %s.",
+    },
+    write: {
+      prompt: "Print arbitrary shell variable value as one line, without treating its contents as a format. Which command fits?",
+      choices: ["printf '%s\\n' \"$value\"", "printf \"$value\"", "printf '$value\\n'", "printf %s\\n $value"],
+      correctChoice: "printf '%s\\n' \"$value\"",
+      answer: "printf '%s\\n' \"$value\" uses a literal format and one quoted data argument.",
+    },
+  },
+  {
+    command: "printf",
+    concept: "repeated-format",
+    label: "format reuse for extra arguments",
+    platform: "Portable shell printf; Linux and macOS",
+    references: [
+      { label: "POSIX", url: "https://pubs.opengroup.org/onlinepubs/9799919799/utilities/printf.html" },
+      { label: "Bash manual", url: "https://www.gnu.org/software/bash/manual/html_node/Bash-Builtins.html#index-printf" },
+    ],
+    definition: {
+      prompt: "What does shell printf do when arguments remain after one pass through the format string?",
+      answer: "printf reuses the format as many times as needed to consume extra arguments. A one-conversion format such as '<%s>\\n' therefore prints one formatted line per argument.\n\nMemory hook: arguments keep cycling through the format.",
+    },
+    read: {
+      prompt: "Command:\nprintf '<%s>\\n' alpha 'two words' gamma\n\nWhat is printed?",
+      choices: ["<alpha>\n<two words>\n<gamma>", "<alpha two words gamma>", "<alpha> only", "alpha\ntwo words\ngamma without angle brackets"],
+      correctChoice: "<alpha>\n<two words>\n<gamma>",
+      answer: "The one-%s format is reused three times, producing one bracketed line for each argument.",
+    },
+    write: {
+      prompt: "Print every positional parameter as its own line using printf's format reuse. Which command fits?",
+      choices: ["printf '%s\\n' \"$@\"", "printf '%s\\n' \"$*\"", "printf \"$@\\n\"", "printf '%s' '$@'"],
+      correctChoice: "printf '%s\\n' \"$@\"",
+      answer: "Quoted \"$@\" supplies one argument per positional parameter; printf reuses '%s\\n' for each one.",
+    },
+  },
+  {
+    command: "printf",
+    concept: "numeric-and-shell-quote",
+    label: "%04d, %.2f, and Bash %q",
+    platform: "Width/precision portable; %q is Bash-specific",
+    references: [
+      { label: "POSIX", url: "https://pubs.opengroup.org/onlinepubs/9799919799/utilities/printf.html" },
+      { label: "Bash manual", url: "https://www.gnu.org/software/bash/manual/html_node/Bash-Builtins.html#index-printf" },
+    ],
+    definition: {
+      prompt: "What do %04d, %.2f, and Bash printf %q express?",
+      answer: "%04d formats an integer in width 4 with leading zero padding; %.2f formats a floating-point value with two digits after the decimal point. Bash-specific %q formats an argument in a shell-reusable quoted form for inspection or generated shell text; %q is not portable POSIX printf syntax.\n\nMemory hooks: width before the type, precision after the dot; q = shell quote in Bash only.",
+    },
+    read: {
+      prompt: "Bash commands:\nprintf '%04d %.2f\\n' 7 3.14159\nprintf '%q\\n' 'two words'\n\nWhat is printed?",
+      choices: ["0007 3.14\ntwo\\ words", "7 3.14159\ntwo words", "0007 3.15\n\"two words\"", "   7 3.14\ntwo words"],
+      correctChoice: "0007 3.14\ntwo\\ words",
+      answer: "The integer is zero-padded to width 4, the float is rounded to two fractional digits, and Bash %q escapes the space in a shell-reusable representation.",
+    },
+    write: {
+      prompt: "In Bash, inspect value in a shell-reusable escaped form followed by a newline. Which command fits?",
+      choices: ["printf '%q\\n' \"$value\"", "printf '%s\\n' \"$value\"", "printf '%04d' \"$value\"", "printf \"$value\""],
+      correctChoice: "printf '%q\\n' \"$value\"",
+      answer: "Bash printf '%q\\n' emits a shell-reusable representation. Use %s instead when you want the original data, not an escaped inspection form.",
+    },
+  },
+];
