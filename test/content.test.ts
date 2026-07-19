@@ -191,6 +191,8 @@ describe("command literacy corpus", () => {
       candidate.command === "grep" && candidate.concept === "result-mode");
     expect(concept).toBeDefined();
     expect(concept!.definition.answer).toMatch(/boolean existence check.*rather than.*error-reporting/i);
+    expect(concept!.definition.answer).toMatch(/GNU grep.*status 0.*even if.*error/i);
+    expect(concept!.definition.answer).toMatch(/other grep implementations.*error status.*vary/i);
   });
 
   it("teaches rg's recursive ignore-aware defaults before filtering flags", () => {
@@ -203,6 +205,15 @@ describe("command literacy corpus", () => {
     expect(commandExercises.filter((item) => item.command?.command === "rg"
       && item.command.concept === "default-filtering").map((item) => item.command!.mode).sort())
       .toEqual(["definition", "read", "write"]);
+  });
+
+  it("states the Git repository context required by rg ignore-file fixtures", () => {
+    const ignoreFixtures = commandConcepts.filter((candidate) =>
+      candidate.command === "rg" && candidate.read.prompt.includes(".gitignore"));
+    expect(ignoreFixtures.length).toBeGreaterThan(0);
+    for (const concept of ignoreFixtures) {
+      expect(concept.read.prompt).toMatch(/Git repository/i);
+    }
   });
 
   it("teaches jq identity, field access, and array indexing before transformations", () => {
@@ -239,6 +250,15 @@ describe("command literacy corpus", () => {
     expect(commandExercises.filter((item) => item.command?.command === "printf"
       && item.command.concept === "literal-format").map((item) => item.command!.mode).sort())
       .toEqual(["definition", "read", "write"]);
+  });
+
+  it("does not present shell printf floating-point formatting as portable POSIX", () => {
+    const concept = commandConcepts.find((candidate) =>
+      candidate.command === "printf" && candidate.concept === "numeric-and-shell-quote");
+    expect(concept).toBeDefined();
+    expect(concept!.platform).toMatch(/integer width.*portable.*floating.*Bash.*%q.*Bash/i);
+    expect(concept!.definition.answer).toMatch(/POSIX.*floating-point conversions.*need not be supported/i);
+    expect(concept!.read.prompt).toMatch(/Bash commands/i);
   });
 
   it("ships the mandatory concepts with definition, read, and write mastery IDs", () => {

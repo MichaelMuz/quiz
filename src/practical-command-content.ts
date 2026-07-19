@@ -193,14 +193,14 @@ export const practicalCommandConcepts: CommandConcept[] = [
     command: "grep",
     concept: "result-mode",
     label: "-l / --files-with-matches; -q / --quiet",
-    platform: "Portable short forms; GNU and BSD/macOS",
+    platform: "Portable short forms; GNU -q error-status behavior called out",
     references: [
       { label: "Manual", url: "https://www.gnu.org/software/grep/manual/grep.html" },
       { label: "TLDR", url: "https://tldr.inbrowser.app/pages/common/grep" },
     ],
     definition: {
       prompt: "When should you use grep -l versus grep -q?",
-      answer: "-l prints only the name of each input file that has a match. -q prints no normal output and communicates whether a match exists through exit status: 0 for a selected line, or 1 when no line was selected and no error occurred. Because -q may return 0 as soon as it finds a match even if another input has an error, use it as a boolean existence check rather than a complete error-reporting mode.\n\nMemory hooks: l = list matching files; q = quiet status check.",
+      answer: "-l prints only the name of each input file that has a match. -q prints no normal output and communicates whether a match exists through exit status. Normally GNU grep returns status 0 for a selected line, 1 when no line was selected, and 2 for an error. With -q, GNU grep returns status 0 if it selects a line even if an error also occurs. Other grep implementations' error statuses may vary, so use -q as a boolean existence check rather than a complete error-reporting mode.\n\nMemory hooks: l = list matching files; q = quiet status check.",
     },
     read: {
       prompt: "a.txt and c.txt contain TODO; b.txt does not.\n\nCommand:\ngrep -l TODO a.txt b.txt c.txt\n\nWhat is printed?",
@@ -229,7 +229,7 @@ export const practicalCommandConcepts: CommandConcept[] = [
       answer: "rg searches files recursively from the current directory. Its automatic filtering respects ignore files such as .gitignore and skips hidden files and binary files by default. This differs from grep, where recursion must be requested and project ignore rules are not a default feature.\n\nMemory hook: rg starts project-aware and recursive.",
     },
     read: {
-      prompt: "Project tree:\nsrc/app.ts        contains TODO\nignored.log       contains TODO; listed in .gitignore\n.env              contains TODO; hidden\nimage.bin         contains TODO bytes; binary\n\nCommand:\nrg TODO\n\nWhich fixture file contributes a match under default filtering?",
+      prompt: "Inside a Git repository, the project tree is:\nsrc/app.ts        contains TODO\nignored.log       contains TODO; listed in .gitignore\n.env              contains TODO; hidden\nimage.bin         contains TODO bytes; binary\n\nCommand:\nrg TODO\n\nWhich fixture file contributes a match under default filtering?",
       choices: ["src/app.ts only", "src/app.ts and ignored.log", "All four files", ".env only"],
       correctChoice: "src/app.ts only",
       answer: "src/app.ts only. Default rg search is recursive and filters ignored, hidden, and binary files.",
@@ -307,7 +307,7 @@ export const practicalCommandConcepts: CommandConcept[] = [
       answer: "--hidden allows hidden files and directories to be searched. It does not disable ignore rules, so an ignored hidden path remains excluded unless ignore filtering is changed separately.\n\nMemory hook: --hidden opens the hidden-file gate only.",
     },
     read: {
-      prompt: "Both files contain alias:\n.bashrc            hidden, not ignored\n.cache/tool.conf    hidden and ignored by .gitignore\n\nCommand:\nrg --hidden alias\n\nWhich path contributes a match?",
+      prompt: "Inside a Git repository, both files contain alias:\n.bashrc            hidden, not ignored\n.cache/tool.conf    hidden and ignored by .gitignore\n\nCommand:\nrg --hidden alias\n\nWhich path contributes a match?",
       choices: [".bashrc only", "Both hidden paths", ".cache/tool.conf only", "Neither path"],
       correctChoice: ".bashrc only",
       answer: ".bashrc only. --hidden includes hidden paths, but normal ignore filtering still excludes .cache/tool.conf.",
@@ -665,15 +665,15 @@ export const practicalCommandConcepts: CommandConcept[] = [
   {
     command: "printf",
     concept: "numeric-and-shell-quote",
-    label: "%04d, %.2f, and Bash %q",
-    platform: "Width/precision portable; %q is Bash-specific",
+    label: "portable %04d; Bash %.2f and %q",
+    platform: "Integer width is portable; floating %.2f uses Bash; %q is Bash-specific",
     references: [
       { label: "POSIX", url: "https://pubs.opengroup.org/onlinepubs/9799919799/utilities/printf.html" },
       { label: "Bash manual", url: "https://www.gnu.org/software/bash/manual/html_node/Bash-Builtins.html#index-printf" },
     ],
     definition: {
       prompt: "What do %04d, %.2f, and Bash printf %q express?",
-      answer: "%04d formats an integer in width 4 with leading zero padding; %.2f formats a floating-point value with two digits after the decimal point. Bash-specific %q formats an argument in a shell-reusable quoted form for inspection or generated shell text; %q is not portable POSIX printf syntax.\n\nMemory hooks: width before the type, precision after the dot; q = shell quote in Bash only.",
+      answer: "%04d portably formats an integer in width 4 with leading zero padding. In Bash, %.2f formats a floating-point value with two digits after the decimal point, but POSIX shell printf says floating-point conversions need not be supported. Bash-specific %q formats an argument in a shell-reusable quoted form for inspection or generated shell text; %q is not portable POSIX printf syntax.\n\nMemory hooks: width before the type, precision after the dot; q = shell quote in Bash only.",
     },
     read: {
       prompt: "Bash commands:\nprintf '%04d %.2f\\n' 7 3.14159\nprintf '%q\\n' 'two words'\n\nWhat is printed?",
