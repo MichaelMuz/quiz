@@ -231,13 +231,13 @@ export const kubectlConcepts: CommandConcept[] = [
     read: {
       prompt: "Pod quiz-abc has containers app and metrics. app restarted recently.\n\nCommand:\nkubectl logs pod/quiz-abc -n quiz -c app --previous --since=10m\n\nWhich source is requested?",
       choices: [
-        "The previous app container instance, limited to its last 10 minutes",
+        "The previous app container instance, only entries newer than 10 minutes before the request",
         "The current app and metrics containers, followed live for 10 minutes",
         "Every previous Pod owned by the Deployment",
         "Kubernetes events from the last 10 minutes",
       ],
-      correctChoice: "The previous app container instance, limited to its last 10 minutes",
-      answer: "-c app selects one container, --previous switches from its current instance to its previous terminated instance, and --since bounds the returned timestamps.",
+      correctChoice: "The previous app container instance, only entries newer than 10 minutes before the request",
+      answer: "-c app selects one container, --previous switches from its current instance to its previous terminated instance, and --since=10m returns only entries newer than ten minutes before the request. It may return no lines if that instance stopped earlier.",
     },
     write: {
       prompt: "For initial triage of named Pod quiz-abc, print existing logs from every container and identify each line's source. Which command fits?",

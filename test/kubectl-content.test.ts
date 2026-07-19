@@ -79,7 +79,9 @@ describe("kubectl proficiency track", () => {
     expect(concept!.definition.answer).toMatch(/Pod.*-c.*container.*--all-containers/i);
     expect(concept!.definition.answer).toMatch(/--previous.*terminated.*container instance/i);
     expect(concept!.definition.answer).toMatch(/--since.*--tail.*-f.*--prefix/i);
-    expect(concept!.read.correctChoice).toMatch(/previous app container.*last 10 minutes/i);
+    expect(concept!.read.correctChoice).toMatch(
+      /previous app container.*newer than 10 minutes before the request/i,
+    );
     expect(concept!.write.correctChoice).toBe("kubectl logs pod/quiz-abc -n quiz --all-containers --prefix");
   });
 
