@@ -4,7 +4,7 @@ export { commandConcepts, commandExerciseId, commandExercises } from "./command-
 export type { CommandConcept } from "./command-content.js";
 
 export type Rating = "again" | "hard" | "good" | "easy";
-export type CommandName = "fd" | "sed" | "xargs" | "fzf" | "grep" | "rg" | "jq" | "awk" | "printf" | "kubectl";
+export type CommandName = "fd" | "sed" | "xargs" | "fzf" | "grep" | "rg" | "jq" | "awk" | "printf" | "kubectl" | "less";
 export type CommandExerciseMode = "definition" | "read" | "write";
 export type Reference = { label: string; url: string };
 export type CommandMetadata = {
@@ -117,15 +117,15 @@ export const contentBank: StaticItem[] = [
     id: "bash-output-append-v-truncate",
     kind: "bash",
     topic: "Bash",
-    prompt: "first >out.txt\nsecond >>log.txt\n\nEach command writes one line to stdout. Both files initially contain OLD. What happens?",
-    answer: "> redirects stdout and truncates the destination before writing, so out.txt loses OLD. >> redirects stdout but appends instead, so log.txt keeps OLD and gains the new line. Without a descriptor number, both forms redirect fd 1.",
+    prompt: "Initial bytes: out.txt = OLD\\n and log.txt = OLD\\n.\n\nprintf '%s\\n' FIRST >out.txt\nprintf '%s\\n' SECOND >>log.txt\n\nWhat are the exact final contents, including newline bytes?",
+    answer: "Both commands redirect fd 1. > opens out.txt and truncates it before printf writes, while >> opens log.txt for writing and appends instead. Exact final bytes: out.txt = FIRST\\n; log.txt = OLD\\nSECOND\\n.",
     choices: [
-      "out.txt's old contents are replaced; log.txt's old contents are kept and new output is added",
-      "Both files keep their old contents and add the new output",
-      "Both files lose their old contents before receiving the new output",
-      "out.txt keeps its old contents; log.txt loses its old contents",
+      "out.txt = FIRST\\n; log.txt = OLD\\nSECOND\\n",
+      "out.txt = OLD\\nFIRST\\n; log.txt = OLD\\nSECOND\\n",
+      "out.txt = FIRST\\n; log.txt = SECOND\\n",
+      "out.txt = OLD\\nFIRST\\n; log.txt = SECOND\\n",
     ],
-    correctChoice: "out.txt's old contents are replaced; log.txt's old contents are kept and new output is added",
+    correctChoice: "out.txt = FIRST\\n; log.txt = OLD\\nSECOND\\n",
     source: { label: "GNU Bash manual, Redirections", url: "https://www.gnu.org/software/bash/manual/html_node/Redirections.html" },
   },
   {

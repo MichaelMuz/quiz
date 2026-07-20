@@ -1,3 +1,7 @@
+import { execFileSync } from "node:child_process";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import {
@@ -90,12 +94,27 @@ describe("static questions", () => {
     expect(item!.correctChoice).toMatch(/stdin.*input\.txt.*stdout.*out\.txt.*stderr.*errors\.txt/i);
   });
 
-  it("distinguishes truncating output from appending output", () => {
+  it("executes the displayed producers and derives exact truncate and append bytes", () => {
     const item = contentBank.find((candidate) => candidate.id === "bash-output-append-v-truncate");
+    const commands = "printf '%s\\n' FIRST >out.txt\nprintf '%s\\n' SECOND >>log.txt";
     expect(item).toBeDefined();
-    expect(item!.prompt).toMatch(/>out\.txt[\s\S]*>>log\.txt/i);
-    expect(item!.answer).toMatch(/>.*truncates.*>>.*appends/i);
-    expect(item!.correctChoice).toMatch(/out\.txt.*replaced.*log\.txt.*kept.*added/i);
+    expect(item!.prompt).toContain(commands);
+    expect(item!.prompt).toContain("out.txt = OLD\\n and log.txt = OLD\\n");
+    expect(item!.answer).toMatch(/fd 1.*>.*truncates.*>>.*appends/i);
+    expect(item!.answer).toContain("out.txt = FIRST\\n");
+    expect(item!.answer).toContain("log.txt = OLD\\nSECOND\\n");
+    expect(item!.correctChoice).toBe("out.txt = FIRST\\n; log.txt = OLD\\nSECOND\\n");
+
+    const fixture = mkdtempSync(join(tmpdir(), "quiz-redirection-"));
+    try {
+      writeFileSync(join(fixture, "out.txt"), "OLD\n");
+      writeFileSync(join(fixture, "log.txt"), "OLD\n");
+      execFileSync("bash", ["-c", commands], { cwd: fixture });
+      expect(readFileSync(join(fixture, "out.txt"), "utf8")).toBe("FIRST\n");
+      expect(readFileSync(join(fixture, "log.txt"), "utf8")).toBe("OLD\nSECOND\n");
+    } finally {
+      rmSync(fixture, { recursive: true, force: true });
+    }
   });
 
   it("makes the existing stdout-then-duplication ordering example deterministic", () => {

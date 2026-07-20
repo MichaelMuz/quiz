@@ -90,6 +90,24 @@ describe("transparent interval scheduler", () => {
     expect(commandExercises.every((item) => seen.has(item.id))).toBe(true);
   });
 
+  it("reaches every less exercise through its definition, read, write progression", () => {
+    const states: Array<{ stableId: string; interval: number; reviews: number; successfulReviews: number; dueAt: string; updatedAt: string }> = [];
+    const seen = new Set<string>();
+    const lessIds = new Set(commandExercises
+      .filter((item) => item.command?.command === "less")
+      .map((item) => item.id));
+
+    for (let position = 0; position < 1_000 && seen.size < lessIds.size; position += 1) {
+      const id = chooseStableId(position, states, new Date("2026-01-02T00:00:00.000Z"));
+      if (!lessIds.has(id)) continue;
+      seen.add(id);
+      states.push({ stableId: id, interval: 2, reviews: 1, successfulReviews: 1,
+        dueAt: "2099-01-01T00:00:00.000Z", updatedAt: "2026-01-02T00:00:00.000Z" });
+    }
+
+    expect(seen).toEqual(lessIds);
+  });
+
   it.each(["binary-units", "decimal-units"])("does not resurface retired exact-byte drill %s when its old review is due", (stableId) => {
     const retired = {
       stableId,

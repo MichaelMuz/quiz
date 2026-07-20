@@ -123,6 +123,39 @@ describe("Quiz HTTP app", () => {
     expect(store.attemptCount()).toBe(1);
   });
 
+  it("replays a stored redirection submission after its stable card copy changes", async () => {
+    const submissionId = "stored-redirection-before-copy-fix";
+    const oldExpectedAnswer = "out.txt's old contents are replaced; log.txt's old contents are kept and new output is added";
+    store.recordAttempt({
+      submissionId,
+      stableId: "bash-output-append-v-truncate",
+      seed: null,
+      prompt: "first >out.txt\nsecond >>log.txt",
+      expectedAnswer: oldExpectedAnswer,
+      response: oldExpectedAnswer,
+      correct: true,
+      rating: "good",
+      reviewedAt: "2026-01-01T00:00:00.000Z",
+    });
+
+    const response = await fetch(`${base}/practice`, {
+      method: "POST",
+      redirect: "manual",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        questionId: "bash-output-append-v-truncate",
+        submissionId,
+        response: oldExpectedAnswer,
+      }),
+    });
+
+    expect(response.status).toBe(303);
+    expect(response.headers.get("location")).toContain("result=correct");
+    expect(await (await fetch(`${base}${response.headers.get("location")}`)).text())
+      .toContain("Expected answer: out.txt&#39;s old contents are replaced; log.txt&#39;s old contents are kept and new output is added");
+    expect(store.attemptCount()).toBe(1);
+  });
+
   it("renders command definitions with labeled memory hooks and safe Manual and TLDR links", async () => {
     const definitionId = commandExerciseId("xargs", "max-lines", "definition");
     store.recordAttempt({
