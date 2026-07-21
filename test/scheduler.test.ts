@@ -34,6 +34,30 @@ describe("transparent interval scheduler", () => {
     ]) expect(ids).toContain(id);
   });
 
+  it("keeps expansion ordering and every applied fixture reachable and resurfaces a missed order", () => {
+    const expansionIds = [
+      "bash-effective-shell-expansion-order",
+      "bash-expansion-quoted-argv",
+      "bash-expansion-brace-before-parameter",
+      "bash-expansion-tilde-contexts",
+      "bash-expansion-command-substitution-newlines",
+      "bash-expansion-splitting-before-pathname",
+      "bash-expansion-matched-unmatched-patterns",
+    ];
+    const mixedIds = new Set(Array.from({ length: 1_000 }, (_, position) =>
+      chooseStableId(position, [], new Date("2026-01-02T00:00:00.000Z"))));
+    for (const id of expansionIds) expect(mixedIds).toContain(id);
+
+    expect(chooseStableId(0, [{
+      stableId: "bash-effective-shell-expansion-order",
+      interval: 0,
+      reviews: 1,
+      successfulReviews: 0,
+      dueAt: "2026-01-02T00:00:00.000Z",
+      updatedAt: "2026-01-02T00:00:00.000Z",
+    }], new Date("2026-01-02T00:00:00.000Z"))).toBe("bash-effective-shell-expansion-order");
+  });
+
   it("unlocks command variants in definition, read, write order", () => {
     const readId = commandExerciseId("fd", "type", "read");
     const writeId = commandExerciseId("fd", "type", "write");

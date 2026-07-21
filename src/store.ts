@@ -46,9 +46,14 @@ export class QuizStore {
         seed INTEGER NOT NULL,
         prompt TEXT NOT NULL,
         expected_answer TEXT NOT NULL,
-        grader TEXT NOT NULL
+        grader TEXT NOT NULL,
+        presentation TEXT
       );
     `);
+    const pendingColumns = this.db.prepare("PRAGMA table_info(pending_generated)").all() as { name: string }[];
+    if (!pendingColumns.some(({ name }) => name === "presentation")) {
+      this.db.exec("ALTER TABLE pending_generated ADD COLUMN presentation TEXT");
+    }
   }
 
   recordAttempt(attempt: Attempt): Attempt {
@@ -115,16 +120,17 @@ export class QuizStore {
 
   getPending(stableId: string): GeneratedQuestion | null {
     const row = this.db.prepare("SELECT * FROM pending_generated WHERE stable_id = ?").get(stableId) as Record<string, unknown> | undefined;
-    return row ? { stableId, seed: Number(row.seed), prompt: String(row.prompt), expectedAnswer: String(row.expected_answer), grader: String(row.grader) } : null;
+    return row ? { stableId, seed: Number(row.seed), prompt: String(row.prompt), expectedAnswer: String(row.expected_answer),
+      grader: String(row.grader), presentation: row.presentation === null ? undefined : String(row.presentation) } : null;
   }
 
   getOrCreatePending(stableId: string, create: () => GeneratedQuestion): GeneratedQuestion {
     const existing = this.getPending(stableId);
     if (existing) return existing;
     const generated = create();
-    this.db.prepare(`INSERT OR IGNORE INTO pending_generated (stable_id, seed, prompt, expected_answer, grader)
-      VALUES (?, ?, ?, ?, ?)`)
-      .run(generated.stableId, generated.seed, generated.prompt, generated.expectedAnswer, generated.grader);
+    this.db.prepare(`INSERT OR IGNORE INTO pending_generated (stable_id, seed, prompt, expected_answer, grader, presentation)
+      VALUES (?, ?, ?, ?, ?, ?)`)
+      .run(generated.stableId, generated.seed, generated.prompt, generated.expectedAnswer, generated.grader, generated.presentation ?? null);
     return this.getPending(stableId)!;
   }
 

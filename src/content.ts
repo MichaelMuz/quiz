@@ -1,3 +1,4 @@
+import { bashExpansionItems } from "./bash-expansion-content.js";
 import { commandExercises } from "./command-content.js";
 
 export { commandConcepts, commandExerciseId, commandExercises } from "./command-content.js";
@@ -16,16 +17,18 @@ export type CommandMetadata = {
 };
 export type StaticItem = {
   id: string;
-  kind: "flashcard" | "bash" | "command";
+  kind: "flashcard" | "bash" | "command" | "ordering";
   topic: string;
   prompt: string;
   answer: string;
+  orderedItems?: string[];
   choices?: string[];
   correctChoice?: string;
   source?: { label: string; url: string };
   references?: Reference[];
   command?: CommandMetadata;
 };
+export type OrderingItem = StaticItem & { kind: "ordering"; orderedItems: string[] };
 export type GeneratedDefinition = { id: string; generator: string; grader: string; active?: boolean };
 export type GeneratedQuestion = {
   stableId: string;
@@ -33,7 +36,9 @@ export type GeneratedQuestion = {
   prompt: string;
   expectedAnswer: string;
   grader: string;
+  presentation?: string;
 };
+export type OrderingQuestion = GeneratedQuestion & { shuffledItems: string[] };
 
 export const contentBank: StaticItem[] = [
   {
@@ -83,6 +88,27 @@ export const contentBank: StaticItem[] = [
     answer: "A unique salt defeats precomputed tables and separates identical passwords. A deliberately expensive password KDF makes each offline guess costly. The server stores the salt and parameters beside the derived hash.",
     source: { label: "OWASP Password Storage Cheat Sheet", url: "https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html" },
   },
+  {
+    id: "bash-effective-shell-expansion-order",
+    kind: "ordering",
+    topic: "Bash",
+    prompt: "Put Effective Shell's seven-operation learning sequence in order, from first to last.",
+    orderedItems: [
+      "brace expansion",
+      "tilde expansion",
+      "parameter expansion",
+      "command substitution",
+      "arithmetic expansion",
+      "word splitting",
+      "pathname expansion",
+    ],
+    answer: "Effective Shell's seven-operation learning sequence is: brace expansion; tilde expansion; parameter expansion; command substitution; arithmetic expansion; word splitting; pathname expansion. This is the book's learning sequence, not Bash's complete formal specification. The Bash manual groups parameter expansion, arithmetic expansion, and command substitution in one phase, includes process substitution where supported and applicable, then performs word splitting, filename expansion, and final quote removal. Parsing and redirection are not expansion stages. Quoting and syntax context can suppress stages.",
+    references: [
+      { label: "Effective Shell, Understanding Shell Expansion", url: "https://effective-shell.com/part-6-advanced-techniques/understanding-shell-expansion/" },
+      { label: "GNU Bash manual, Shell Expansions", url: "https://www.gnu.org/software/bash/manual/html_node/Shell-Expansions.html" },
+    ],
+  },
+  ...bashExpansionItems,
   {
     id: "bash-fd-standard-streams",
     kind: "flashcard",
@@ -338,7 +364,35 @@ const graders: Record<string, (response: string, expected: string) => boolean> =
     const value = response.trim();
     return /^[-+]?(?:\d+\.?\d*|\.\d+)$/.test(value) && Number(value) === Number(expected);
   },
+  "exact-order": (response, expected) => {
+    const actualItems = JSON.parse(response) as unknown;
+    const expectedItems = JSON.parse(expected) as unknown;
+    return Array.isArray(actualItems) && Array.isArray(expectedItems)
+      && actualItems.length === expectedItems.length
+      && actualItems.every((item, index) => typeof item === "string" && item === expectedItems[index]);
+  },
 };
+
+export function generateOrderingQuestion(item: OrderingItem, seed: number): OrderingQuestion {
+  const next = random(seed);
+  const shuffledItems = [...item.orderedItems];
+  for (let index = shuffledItems.length - 1; index > 0; index -= 1) {
+    const destination = Math.floor(next() * (index + 1));
+    [shuffledItems[index], shuffledItems[destination]] = [shuffledItems[destination]!, shuffledItems[index]!];
+  }
+  if (shuffledItems.length > 1 && shuffledItems.every((value, index) => value === item.orderedItems[index])) {
+    shuffledItems.push(shuffledItems.shift()!);
+  }
+  return {
+    stableId: item.id,
+    seed,
+    prompt: item.prompt,
+    expectedAnswer: JSON.stringify(item.orderedItems),
+    grader: "exact-order",
+    presentation: JSON.stringify(shuffledItems),
+    shuffledItems,
+  };
+}
 
 export function generateQuestion(id: string, seed: number): GeneratedQuestion {
   const definition = generatedDefinitions.find((candidate) => candidate.id === id);
@@ -367,6 +421,14 @@ export function validateContent(items: StaticItem[], definitions: GeneratedDefin
     if (problems.length) throw new Error(`Missing registrations: ${problems.join(", ")}`);
   }
   for (const item of items) {
+    if (item.kind === "ordering") {
+      if (!item.orderedItems || item.orderedItems.length < 2) {
+        throw new Error(`Ordering item needs at least two values: ${item.id}`);
+      }
+      if (new Set(item.orderedItems).size !== item.orderedItems.length) {
+        throw new Error(`Ordering item values must be unique: ${item.id}`);
+      }
+    }
     if (item.correctChoice && !item.choices?.includes(item.correctChoice)) {
       throw new Error(`Correct choice is not listed: ${item.id}`);
     }

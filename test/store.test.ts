@@ -2,6 +2,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
+import Database from "better-sqlite3";
 import { QuizStore } from "../src/store.js";
 
 const dirs: string[] = [];
@@ -40,11 +41,38 @@ describe("QuizStore", () => {
     reopened.close();
   });
 
+  it("migrates an existing pending table before storing ordering presentation", () => {
+    const path = databasePath();
+    const legacy = new Database(path);
+    legacy.exec(`CREATE TABLE pending_generated (
+      stable_id TEXT PRIMARY KEY,
+      seed INTEGER NOT NULL,
+      prompt TEXT NOT NULL,
+      expected_answer TEXT NOT NULL,
+      grader TEXT NOT NULL
+    )`);
+    legacy.close();
+
+    const store = new QuizStore(path);
+    const pending = store.getOrCreatePending("ordering", () => ({
+      stableId: "ordering",
+      seed: 5,
+      prompt: "Order these",
+      expectedAnswer: "[\"first\",\"second\"]",
+      grader: "exact-order",
+      presentation: "[\"second\",\"first\"]",
+    }));
+
+    expect(pending.presentation).toBe("[\"second\",\"first\"]");
+    store.close();
+  });
+
   it("keeps one generated pending instance stable across reload and reopen", () => {
     const path = databasePath();
     const first = new QuizStore(path);
     const pending = first.getOrCreatePending("mental-arithmetic", () => ({
       stableId: "mental-arithmetic", seed: 77, prompt: "8 × 8 = ?", expectedAnswer: "64", grader: "integer",
+      presentation: "[\"stable\",\"order\"]",
     }));
     expect(first.getOrCreatePending("mental-arithmetic", () => { throw new Error("must not regenerate"); })).toEqual(pending);
     first.close();

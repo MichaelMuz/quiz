@@ -4,7 +4,7 @@ import { join } from "node:path";
 import type { AddressInfo } from "node:net";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createQuizServer } from "../src/app.js";
-import { commandExerciseId, commandExercises, generateQuestion } from "../src/content.js";
+import { commandExerciseId, commandExercises, contentBank, generateQuestion, type OrderingItem } from "../src/content.js";
 import { QuizStore } from "../src/store.js";
 
 describe("Quiz HTTP app", () => {
@@ -79,6 +79,148 @@ describe("Quiz HTTP app", () => {
     expect(reviewPage).toContain("Not quite.");
     expect(reviewPage).toContain(`Expected answer: ${expected}`);
     expect(reviewPage).toContain("Question 2 of 8");
+  });
+
+  it("renders a persistent non-drag ordering control and grades its exact submitted order", async () => {
+    store.recordAttempt({
+      submissionId: "due-ordering",
+      stableId: "bash-effective-shell-expansion-order",
+      seed: 99,
+      prompt: "old prompt",
+      expectedAnswer: "old answer",
+      response: "[]",
+      correct: false,
+      rating: "again",
+      reviewedAt: "2026-01-01T00:00:00.000Z",
+    });
+
+    const firstPage = await (await fetch(`${base}/practice`)).text();
+    const secondPage = await (await fetch(`${base}/practice`)).text();
+    const responseValues = (page: string) => [...page.matchAll(/name="response" value="([^"]+)"/g)]
+      .map((match) => match[1]);
+
+    expect(responseValues(firstPage)).toEqual([
+      "arithmetic expansion",
+      "brace expansion",
+      "parameter expansion",
+      "pathname expansion",
+      "command substitution",
+      "tilde expansion",
+      "word splitting",
+    ]);
+    expect(responseValues(secondPage)).toEqual(responseValues(firstPage));
+    expect(firstPage).toContain("from first to last");
+    expect(firstPage).toContain('class="ordering-list"');
+    expect(firstPage).toContain('type="button" class="order-move" data-direction="up"');
+    expect(firstPage).toContain('type="button" class="order-move" data-direction="down"');
+    expect(firstPage).toContain('aria-label="Move arithmetic expansion up"');
+    expect(firstPage).toContain(".order-label{flex:1;min-width:0;font-weight:800;overflow-wrap:anywhere}");
+    expect(firstPage).not.toContain("draggable=");
+
+    const submission = firstPage.match(/name="submissionId" value="([^"]+)/)?.[1];
+    expect(submission).toBeTruthy();
+    const form = new URLSearchParams({
+      questionId: "bash-effective-shell-expansion-order",
+      submissionId: submission!,
+    });
+    for (const value of [
+      "brace expansion",
+      "tilde expansion",
+      "parameter expansion",
+      "command substitution",
+      "arithmetic expansion",
+      "word splitting",
+      "pathname expansion",
+    ]) form.append("response", value);
+
+    const result = await fetch(`${base}/practice`, {
+      method: "POST",
+      redirect: "manual",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: form,
+    });
+    expect(result.status).toBe(303);
+    expect(result.headers.get("location")).toContain("result=correct");
+    expect(store.attemptBySubmission(submission!)).toMatchObject({
+      stableId: "bash-effective-shell-expansion-order",
+      seed: 1234,
+      correct: true,
+      rating: "good",
+      response: JSON.stringify([
+        "brace expansion",
+        "tilde expansion",
+        "parameter expansion",
+        "command substitution",
+        "arithmetic expansion",
+        "word splitting",
+        "pathname expansion",
+      ]),
+    });
+  });
+
+  it("grades an in-flight ordering submission against its stored canonical values", async () => {
+    store.recordAttempt({
+      submissionId: "due-stored-ordering",
+      stableId: "bash-effective-shell-expansion-order",
+      seed: 98,
+      prompt: "old prompt",
+      expectedAnswer: "old answer",
+      response: "[]",
+      correct: false,
+      rating: "again",
+      reviewedAt: "2026-01-01T00:00:00.000Z",
+    });
+    const page = await (await fetch(`${base}/practice`)).text();
+    const submissionId = page.match(/name="submissionId" value="([^"]+)/)?.[1];
+    const item = contentBank.find((candidate) => candidate.id === "bash-effective-shell-expansion-order") as OrderingItem;
+    const originalItems = item.orderedItems;
+    const originalAnswer = item.answer;
+    item.orderedItems = ["replacement first", "replacement second"];
+    item.answer = "replacement answer";
+
+    try {
+      const form = new URLSearchParams({ questionId: item.id, submissionId: submissionId! });
+      for (const value of [
+        "brace expansion",
+        "tilde expansion",
+        "parameter expansion",
+        "command substitution",
+        "arithmetic expansion",
+        "word splitting",
+        "pathname expansion",
+      ]) form.append("response", value);
+      const response = await fetch(`${base}/practice`, {
+        method: "POST",
+        redirect: "manual",
+        headers: { "content-type": "application/x-www-form-urlencoded" },
+        body: form,
+      });
+
+      expect(response.status).toBe(303);
+      expect(response.headers.get("location")).toContain("result=correct");
+      expect(store.attemptBySubmission(submissionId!)).toMatchObject({
+        correct: true,
+        expectedAnswer: "Expected order: brace expansion; tilde expansion; parameter expansion; command substitution; arithmetic expansion; word splitting; pathname expansion.",
+      });
+    } finally {
+      item.orderedItems = originalItems;
+      item.answer = originalAnswer;
+    }
+  });
+
+  it("rejects a tampered ordering submission", async () => {
+    const response = await fetch(`${base}/practice`, {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        questionId: "bash-effective-shell-expansion-order",
+        submissionId: "tampered-order",
+        response: "<script>alert(1)</script>",
+      }),
+    });
+
+    expect(response.status).toBe(400);
+    expect(store.attemptBySubmission("tampered-order")).toBeNull();
   });
 
   it("uses a text keyboard for inverse IEC prefix recall", async () => {
