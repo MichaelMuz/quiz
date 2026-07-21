@@ -158,6 +158,43 @@ describe("Quiz HTTP app", () => {
     });
   });
 
+  it.each(["correct", "incorrect"] as const)("shows the stored formal-model explanation after a %s ordering submission", async (outcome) => {
+    store.recordAttempt({
+      submissionId: `due-ordering-${outcome}`,
+      stableId: "bash-effective-shell-expansion-order",
+      seed: 99,
+      prompt: "old prompt",
+      expectedAnswer: "old answer",
+      response: "[]",
+      correct: false,
+      rating: "again",
+      reviewedAt: "2026-01-01T00:00:00.000Z",
+    });
+
+    const page = await (await fetch(`${base}/practice`)).text();
+    const submissionId = page.match(/name="submissionId" value="([^"]+)/)?.[1];
+    const item = contentBank.find((candidate) => candidate.id === "bash-effective-shell-expansion-order") as OrderingItem;
+    const submittedItems = outcome === "correct" ? item.orderedItems : [...item.orderedItems].reverse();
+    const form = new URLSearchParams({ questionId: item.id, submissionId: submissionId! });
+    for (const value of submittedItems) form.append("response", value);
+
+    const response = await fetch(`${base}/practice`, {
+      method: "POST",
+      redirect: "manual",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: form,
+    });
+    expect(response.status).toBe(303);
+    expect(response.headers.get("location")).toContain(`result=${outcome}`);
+    expect(store.attemptBySubmission(submissionId!)).toMatchObject({ expectedAnswer: item.answer });
+
+    const reviewPage = await (await fetch(`${base}${response.headers.get("location")}`)).text();
+    expect(reviewPage).toContain("groups parameter expansion, arithmetic expansion, and command substitution in one phase");
+    expect(reviewPage).toContain("process substitution where supported and applicable");
+    expect(reviewPage).toContain("final quote removal");
+    expect(reviewPage).toContain("Parsing and redirection are not expansion stages");
+  });
+
   it("grades an in-flight ordering submission against its stored canonical values", async () => {
     store.recordAttempt({
       submissionId: "due-stored-ordering",
@@ -200,7 +237,7 @@ describe("Quiz HTTP app", () => {
       expect(response.headers.get("location")).toContain("result=correct");
       expect(store.attemptBySubmission(submissionId!)).toMatchObject({
         correct: true,
-        expectedAnswer: "Expected order: brace expansion; tilde expansion; parameter expansion; command substitution; arithmetic expansion; word splitting; pathname expansion.",
+        expectedAnswer: originalAnswer,
       });
     } finally {
       item.orderedItems = originalItems;

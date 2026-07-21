@@ -37,6 +37,7 @@ export type GeneratedQuestion = {
   expectedAnswer: string;
   grader: string;
   presentation?: string;
+  feedback?: string;
 };
 export type OrderingQuestion = GeneratedQuestion & { shuffledItems: string[] };
 
@@ -390,6 +391,7 @@ export function generateOrderingQuestion(item: OrderingItem, seed: number): Orde
     expectedAnswer: JSON.stringify(item.orderedItems),
     grader: "exact-order",
     presentation: JSON.stringify(shuffledItems),
+    feedback: item.answer,
     shuffledItems,
   };
 }

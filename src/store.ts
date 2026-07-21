@@ -47,12 +47,16 @@ export class QuizStore {
         prompt TEXT NOT NULL,
         expected_answer TEXT NOT NULL,
         grader TEXT NOT NULL,
-        presentation TEXT
+        presentation TEXT,
+        feedback TEXT
       );
     `);
     const pendingColumns = this.db.prepare("PRAGMA table_info(pending_generated)").all() as { name: string }[];
     if (!pendingColumns.some(({ name }) => name === "presentation")) {
       this.db.exec("ALTER TABLE pending_generated ADD COLUMN presentation TEXT");
+    }
+    if (!pendingColumns.some(({ name }) => name === "feedback")) {
+      this.db.exec("ALTER TABLE pending_generated ADD COLUMN feedback TEXT");
     }
   }
 
@@ -121,16 +125,18 @@ export class QuizStore {
   getPending(stableId: string): GeneratedQuestion | null {
     const row = this.db.prepare("SELECT * FROM pending_generated WHERE stable_id = ?").get(stableId) as Record<string, unknown> | undefined;
     return row ? { stableId, seed: Number(row.seed), prompt: String(row.prompt), expectedAnswer: String(row.expected_answer),
-      grader: String(row.grader), presentation: row.presentation === null ? undefined : String(row.presentation) } : null;
+      grader: String(row.grader), presentation: row.presentation === null ? undefined : String(row.presentation),
+      feedback: row.feedback === null ? undefined : String(row.feedback) } : null;
   }
 
   getOrCreatePending(stableId: string, create: () => GeneratedQuestion): GeneratedQuestion {
     const existing = this.getPending(stableId);
     if (existing) return existing;
     const generated = create();
-    this.db.prepare(`INSERT OR IGNORE INTO pending_generated (stable_id, seed, prompt, expected_answer, grader, presentation)
-      VALUES (?, ?, ?, ?, ?, ?)`)
-      .run(generated.stableId, generated.seed, generated.prompt, generated.expectedAnswer, generated.grader, generated.presentation ?? null);
+    this.db.prepare(`INSERT OR IGNORE INTO pending_generated (stable_id, seed, prompt, expected_answer, grader, presentation, feedback)
+      VALUES (?, ?, ?, ?, ?, ?, ?)`)
+      .run(generated.stableId, generated.seed, generated.prompt, generated.expectedAnswer, generated.grader,
+        generated.presentation ?? null, generated.feedback ?? null);
     return this.getPending(stableId)!;
   }
 

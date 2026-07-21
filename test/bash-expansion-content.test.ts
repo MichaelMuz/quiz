@@ -25,6 +25,7 @@ describe("Bash expansion ordering practice", () => {
     expect(item).toMatchObject({ kind: "ordering", orderedItems: expansionOrder });
     const question = generateOrderingQuestion(item!, 1234);
     expect(question.expectedAnswer).toBe(JSON.stringify(expansionOrder));
+    expect(question.feedback).toBe(item!.answer);
     expect(question.shuffledItems).toEqual([
       "arithmetic expansion",
       "brace expansion",

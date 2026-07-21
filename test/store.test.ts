@@ -61,9 +61,11 @@ describe("QuizStore", () => {
       expectedAnswer: "[\"first\",\"second\"]",
       grader: "exact-order",
       presentation: "[\"second\",\"first\"]",
+      feedback: "Why first comes before second.",
     }));
 
     expect(pending.presentation).toBe("[\"second\",\"first\"]");
+    expect(pending.feedback).toBe("Why first comes before second.");
     store.close();
   });
 

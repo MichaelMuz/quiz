@@ -191,7 +191,8 @@ export function createQuizServer(store: QuizStore, options: AppOptions = {}) {
           const userResponse = JSON.stringify(submittedItems);
           correct = gradeAnswer(pending.grader, userResponse, pending.expectedAnswer);
           store.recordAttempt({ submissionId, stableId: ordering.id, seed: pending.seed, prompt: pending.prompt,
-            expectedAnswer: `Expected order: ${canonicalItems.join("; ")}.`, response: userResponse, correct, rating: correct ? "good" : "again", reviewedAt });
+            expectedAnswer: pending.feedback ?? `Expected order: ${canonicalItems.join("; ")}.`,
+            response: userResponse, correct, rating: correct ? "good" : "again", reviewedAt });
         } else {
           if (item!.correctChoice) {
             const userResponse = form.get("response") ?? "";
