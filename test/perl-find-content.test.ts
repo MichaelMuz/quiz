@@ -201,6 +201,26 @@ describe("practical find command-literacy cohort", () => {
     expect(actions!.definition.answer).toMatch(/-ok.*confirm/i);
   });
 
+  it("scopes current POSIX and implementation-specific find features accurately", () => {
+    const pathTests = commandConcepts.find((concept) =>
+      concept.command === "find" && concept.concept === "path-depth-empty");
+    const actions = commandConcepts.find((concept) =>
+      concept.command === "find" && concept.concept === "safe-actions");
+    const symlinks = commandConcepts.find((concept) =>
+      concept.command === "find" && concept.concept === "symlink-delete-safety");
+
+    expect(pathTests!.platform).toMatch(/POSIX.*-path/i);
+    expect(pathTests!.definition.answer).toMatch(/-path.*POSIX/is);
+    expect(pathTests!.definition.answer).toMatch(/-maxdepth.*-empty.*GNU.*BSD\/macOS/is);
+    expect(actions!.platform).toMatch(/POSIX Issue 8/i);
+    expect(actions!.definition.answer).toMatch(/POSIX Issue 8.*-print0.*xargs -0/is);
+    expect(actions!.write.correctChoice).toContain("cksum");
+    expect(actions!.write.choices!.join("\n")).not.toContain("sha256sum");
+    expect(symlinks!.platform).toMatch(/-P.*GNU.*BSD\/macOS/i);
+    expect(symlinks!.definition.answer).toMatch(/-P.*GNU.*BSD\/macOS/is);
+    expect(symlinks!.definition.answer).toMatch(/POSIX.*-H.*-L/is);
+  });
+
   it("exposes every mode deterministically in prerequisite order", () => {
     const first = exposureOrder("find", 3_000);
     const second = exposureOrder("find", 3_000);

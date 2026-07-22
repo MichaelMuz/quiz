@@ -33,11 +33,11 @@ export const findCommandConcepts: CommandConcept[] = [
     command: "find",
     concept: "path-depth-empty",
     label: "-path, -maxdepth, and -empty",
-    platform: "GNU and BSD/macOS find extensions beyond the POSIX core",
-    references: [effectiveShell, gnuFind, appleFind],
+    platform: "POSIX -path; GNU and BSD/macOS -maxdepth and -empty extensions",
+    references: [effectiveShell, posixFind, gnuFind, appleFind],
     definition: {
       prompt: "How do -path, -maxdepth, and -empty narrow a find traversal?",
-      answer: "-path PATTERN matches the whole pathname as find presents it, including directory components; quote the pattern. -maxdepth N applies tests and actions only through N levels below the starting point, where 0 means the starting point itself. -empty matches an empty regular file or empty directory. These useful primaries exist in GNU and current BSD/macOS find, but they are not in the portable POSIX core.\n\nMemory hook: path matches the route, maxdepth caps descent, empty tests contents.",
+      answer: "-path PATTERN is POSIX and matches the whole pathname as find presents it, including directory components; quote the pattern. -maxdepth N applies tests and actions only through N levels below the starting point, where 0 means the starting point itself. -empty matches an empty regular file or empty directory. -maxdepth and -empty are GNU and current BSD/macOS extensions rather than POSIX primaries.\n\nMemory hook: path matches the route, maxdepth caps descent, empty tests contents.",
     },
     read: {
       prompt: "Fixture includes empty file tree/src/empty, empty directory tree/empty-dir, and nonempty tree/src/app.ts.\n\nCommand:\nfind tree -maxdepth 2 -path '*/src/*' -empty -print\n\nWhat is printed?",
@@ -148,11 +148,11 @@ export const findCommandConcepts: CommandConcept[] = [
     command: "find",
     concept: "safe-actions",
     label: "-print0, xargs -0, -exec, and -ok",
-    platform: "POSIX actions plus GNU and BSD/macOS NUL-safe extensions labeled",
+    platform: "POSIX Issue 8 actions; GNU and BSD/macOS history plus older POSIX limitation labeled",
     references: [effectiveShell, posixFind, gnuFind, appleFind],
     definition: {
       prompt: "How should find pass arbitrary pathnames to another command, and how do its execution actions differ?",
-      answer: "Without an explicit action, find behaves as though -print were appended to the expression. -print writes newline-delimited names, which cannot represent a pathname containing a newline unambiguously. GNU and BSD/macOS -print0 paired with xargs -0 uses NUL boundaries and preserves spaces and newlines. POSIX -exec utility {} \\; invokes the utility once per path, while -exec utility {} + batches multiple literal path arguments without a text-parsing boundary. -ok is the interactive confirmation form and is intentionally unsuitable for unattended runs. Quote or escape the semicolon so the shell passes it to find.\n\nMemory hook: paths are arguments, not lines; use NUL or let -exec build argv directly.",
+      answer: "Without an explicit action, find behaves as though -print were appended to the expression. -print writes newline-delimited names, which cannot represent a pathname containing a newline unambiguously. POSIX Issue 8 standardizes -print0 paired with xargs -0 for NUL boundaries that preserve spaces and newlines; GNU and BSD/macOS supported these forms before Issue 8, but older POSIX versions did not. POSIX -exec utility {} \\; invokes the utility once per path, while -exec utility {} + batches multiple literal path arguments without a text-parsing boundary. -ok is the interactive confirmation form and is intentionally unsuitable for unattended runs. Quote or escape the semicolon so the shell passes it to find.\n\nMemory hook: paths are arguments, not lines; use NUL or let -exec build argv directly.",
     },
     read: {
       prompt: "The search finds two files named two words.txt and line\\nbreak.txt, where the second name contains an actual newline.\n\nPipeline:\nfind tree/src -maxdepth 1 -type f -print0 | xargs -0 COMMAND\n\nHow many pathname arguments does COMMAND receive?",
@@ -161,21 +161,21 @@ export const findCommandConcepts: CommandConcept[] = [
       answer: "-print0 emits one NUL after each complete pathname and xargs -0 reads exactly that boundary, so spaces and the embedded newline remain data inside two arguments.",
     },
     write: {
-      prompt: "Hash every regular file safely when names may contain spaces or newlines. Which GNU/BSD/macOS pipeline preserves boundaries?",
-      choices: ["find . -type f -print0 | xargs -0 sha256sum", "find . -type f -print | xargs sha256sum", "find . -type f | xargs -L 1 sha256sum", "find . -type f -print0 | xargs sha256sum"],
-      correctChoice: "find . -type f -print0 | xargs -0 sha256sum",
-      answer: "Both sides agree on NUL boundaries. A portable alternative that avoids serializing names is find . -type f -exec sha256sum {} +.",
+      prompt: "Checksum every regular file safely when names may contain spaces or newlines. Which POSIX Issue 8, GNU, or BSD/macOS pipeline preserves boundaries?",
+      choices: ["find . -type f -print0 | xargs -0 cksum", "find . -type f -print | xargs cksum", "find . -type f | xargs -L 1 cksum", "find . -type f -print0 | xargs cksum"],
+      correctChoice: "find . -type f -print0 | xargs -0 cksum",
+      answer: "Both sides agree on NUL boundaries, and POSIX cksum is available on both Linux and macOS. An alternative that avoids serializing names is find . -type f -exec cksum {} +.",
     },
   },
   {
     command: "find",
     concept: "symlink-delete-safety",
     label: "-P/-H/-L and preview before -delete",
-    platform: "POSIX symlink modes plus GNU and BSD/macOS -delete behavior labeled",
+    platform: "POSIX default/-H/-L; -P and -delete in GNU and BSD/macOS",
     references: [effectiveShell, posixFind, gnuFind, appleFind],
     definition: {
       prompt: "How do find's symlink modes change traversal, and what makes -delete a high-risk action?",
-      answer: "-P is the default: inspect symbolic links without following them. -H follows only symlinks supplied as starting points. -L follows encountered symlinks where possible, can traverse linked directories, and changes tests such as -type; place -H, -L, or -P before starting points. GNU and BSD/macOS -delete removes each matching path immediately and uses depth-first behavior, so a broad start point, precedence mistake, or link policy can be expensive. First run the exact scoped expression with -print, inspect it, then replace only the final -print with -delete. Keep -delete last.\n\nMemory hook: choose link policy before the walk; prove the match set before deletion.",
+      answer: "POSIX specifies default no-follow behavior plus -H, which follows symlink starting points, and -L, which follows encountered symlinks where possible. -P is the GNU and BSD/macOS option that explicitly selects their default no-follow behavior; place any supported link-policy option before starting points. Following links can traverse linked directories and changes tests such as -type. GNU and BSD/macOS -delete removes each matching path immediately and uses depth-first behavior, so a broad start point, precedence mistake, or link policy can be expensive. First run the exact scoped expression with -print, inspect it, then replace only the final -print with -delete. Keep -delete last.\n\nMemory hook: choose link policy before the walk; prove the match set before deletion.",
     },
     read: {
       prompt: "tree/links/source-link points to ../src, which contains app.ts and sub/deep.ts.\n\nCommand:\nfind -L tree/links -type f -name '*.ts' -print\n\nWhat does -L cause?",
