@@ -5,6 +5,8 @@ import type {
   StaticItem,
 } from "./content.js";
 import { practicalCommandConcepts } from "./practical-command-content.js";
+import { perlCommandConcepts } from "./perl-command-content.js";
+import { findCommandConcepts } from "./find-command-content.js";
 import { kubectlConcepts } from "./kubectl-content.js";
 import { lessConcepts } from "./less-content.js";
 
@@ -270,6 +272,8 @@ export const commandConcepts: CommandConcept[] = [
     },
   },
   ...practicalCommandConcepts,
+  ...perlCommandConcepts,
+  ...findCommandConcepts,
   ...kubectlConcepts,
   ...lessConcepts,
 ];

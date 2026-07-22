@@ -5,7 +5,7 @@ export { commandConcepts, commandExerciseId, commandExercises } from "./command-
 export type { CommandConcept } from "./command-content.js";
 
 export type Rating = "again" | "hard" | "good" | "easy";
-export type CommandName = "fd" | "sed" | "xargs" | "fzf" | "grep" | "rg" | "jq" | "awk" | "printf" | "kubectl" | "less";
+export type CommandName = "fd" | "sed" | "xargs" | "fzf" | "grep" | "rg" | "jq" | "awk" | "printf" | "kubectl" | "less" | "perl" | "find";
 export type CommandExerciseMode = "definition" | "read" | "write";
 export type Reference = { label: string; url: string };
 export type CommandMetadata = {
