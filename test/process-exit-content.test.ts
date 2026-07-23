@@ -69,7 +69,7 @@ describe("process termination diagnosis practice", () => {
     const item = contentBank.find((candidate) => candidate.id === "cgroup-v2-oom-kill-evidence");
 
     expect(item).toBeDefined();
-    expect(item!.prompt).toContain("File: /sys/fs/cgroup/quiz/memory.events\nExcerpt:\noom 3\noom_kill 2");
+    expect(item!.prompt).toContain("$ cd /sys/fs/cgroup/quiz\n$ cat memory.events\noom 3\noom_kill 2");
     expect(item!.correctChoice).toBe("Two processes in this cgroup were killed by an OOM killer; correlate the counter with the incident");
     expect(item!.answer).toMatch(/cgroup v2.*memory\.events.*oom_kill.*counter.*not.*particular status 137/i);
     expect(item!.references?.map(({ url }) => url)).toContain(

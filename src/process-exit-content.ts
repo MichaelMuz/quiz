@@ -120,7 +120,7 @@ export const processExitItems: StaticItem[] = [
     id: "cgroup-v2-oom-kill-evidence",
     kind: "bash",
     topic: "Linux diagnosis",
-    prompt: "File: /sys/fs/cgroup/quiz/memory.events\nExcerpt:\noom 3\noom_kill 2\n\nWhat does oom_kill 2 establish?",
+    prompt: "$ cd /sys/fs/cgroup/quiz\n$ cat memory.events\noom 3\noom_kill 2\n\nWhat does oom_kill 2 establish?",
     answer: "In cgroup v2, memory.events exposes the oom_kill counter: the number of processes belonging to this cgroup killed by an OOM killer. Here that cumulative counter is 2. It is useful evidence to correlate with the incident, not proof that a particular status 137 was an OOM kill.",
     choices: [
       "Two processes in this cgroup were killed by an OOM killer; correlate the counter with the incident",
