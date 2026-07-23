@@ -1,5 +1,6 @@
 import { bashExpansionItems } from "./bash-expansion-content.js";
 import { commandExercises } from "./command-content.js";
+import { processExitItems } from "./process-exit-content.js";
 
 export { commandConcepts, commandExerciseId, commandExercises } from "./command-content.js";
 export type { CommandConcept } from "./command-content.js";
@@ -110,6 +111,7 @@ export const contentBank: StaticItem[] = [
     ],
   },
   ...bashExpansionItems,
+  ...processExitItems,
   {
     id: "bash-fd-standard-streams",
     kind: "flashcard",
