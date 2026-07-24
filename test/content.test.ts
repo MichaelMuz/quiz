@@ -96,14 +96,17 @@ describe("static questions", () => {
 
   it("executes the displayed producers and derives exact truncate and append bytes", () => {
     const item = contentBank.find((candidate) => candidate.id === "bash-output-append-v-truncate");
+    const transcript = "$ cat out.txt\nOLD\n$ cat log.txt\nOLD";
     const commands = "printf '%s\\n' FIRST >out.txt\nprintf '%s\\n' SECOND >>log.txt";
     expect(item).toBeDefined();
-    expect(item!.prompt).toContain(commands);
-    expect(item!.prompt).toContain("out.txt = OLD\\n and log.txt = OLD\\n");
+    expect(item!.prompt).toContain(`Initial shell transcript:\n${transcript}`);
+    expect(item!.prompt).toContain(`\n\nCommands to run:\n${commands}`);
+    expect(item!.prompt).toMatch(/each final line.*last.*newline-terminated/i);
+    expect(item!.prompt).not.toContain("Initial bytes: out.txt =");
     expect(item!.answer).toMatch(/fd 1.*>.*truncates.*>>.*appends/i);
-    expect(item!.answer).toContain("out.txt = FIRST\\n");
-    expect(item!.answer).toContain("log.txt = OLD\\nSECOND\\n");
-    expect(item!.correctChoice).toBe("out.txt = FIRST\\n; log.txt = OLD\\nSECOND\\n");
+    expect(item!.answer).toMatch(/out\.txt:\nFIRST.*log\.txt:\nOLD\nSECOND/s);
+    expect(item!.correctChoice).toMatch(/out\.txt:\nFIRST.*log\.txt:\nOLD\nSECOND/s);
+    expect(item!.correctChoice).not.toMatch(/(?:out|log)\.txt\s*=/);
 
     const fixture = mkdtempSync(join(tmpdir(), "quiz-redirection-"));
     try {

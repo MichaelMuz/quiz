@@ -335,6 +335,26 @@ describe("Quiz HTTP app", () => {
     expect(store.attemptCount()).toBe(1);
   });
 
+  it("preserves exact file-content line breaks in redirection feedback", async () => {
+    const item = contentBank.find((candidate) => candidate.id === "bash-output-append-v-truncate")!;
+    const submissionId = "multiline-redirection-feedback";
+    store.recordAttempt({
+      submissionId,
+      stableId: item.id,
+      seed: null,
+      prompt: item.prompt,
+      expectedAnswer: item.answer,
+      response: item.choices![1]!,
+      correct: false,
+      rating: "again",
+      reviewedAt: "2026-01-02T03:04:05.000Z",
+    });
+
+    const page = await (await fetch(`${base}/practice?result=incorrect&review=${submissionId}`)).text();
+    expect(page).toContain(".result{white-space:pre-wrap}");
+    expect(page).toContain("Final out.txt:\nFIRST\n\nFinal log.txt:\nOLD\nSECOND");
+  });
+
   it("renders command definitions with labeled memory hooks and safe Manual and TLDR links", async () => {
     const definitionId = commandExerciseId("xargs", "max-lines", "definition");
     store.recordAttempt({
