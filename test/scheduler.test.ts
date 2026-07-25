@@ -103,7 +103,7 @@ describe("transparent interval scheduler", () => {
   it("keeps every command exercise reachable through deterministic first exposure", () => {
     const states: Array<{ stableId: string; interval: number; reviews: number; successfulReviews: number; dueAt: string; updatedAt: string }> = [];
     const seen = new Set<string>();
-    for (let position = 0; position < 500; position += 1) {
+    for (let position = 0; position < 1_000; position += 1) {
       const id = chooseStableId(position, states, new Date("2026-01-02T00:00:00.000Z"));
       seen.add(id);
       const exercise = commandExercises.find((item) => item.id === id);

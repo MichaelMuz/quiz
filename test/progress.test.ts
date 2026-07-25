@@ -9,6 +9,7 @@ describe("command mastery progress", () => {
       "fd",
       "sed",
       "xargs",
+      "cut",
       "fzf",
       "grep",
       "rg",
@@ -20,7 +21,7 @@ describe("command mastery progress", () => {
       "kubectl",
       "less",
     ]);
-    expect(progress.map(({ concepts }) => concepts.length)).toEqual([3, 3, 3, 3, 5, 5, 6, 4, 3, 5, 8, 14, 9]);
+    expect(progress.map(({ concepts }) => concepts.length)).toEqual([3, 3, 3, 2, 3, 5, 5, 6, 6, 3, 5, 8, 14, 9]);
     for (const command of progress) {
       for (const concept of command.concepts) {
         expect(concept.modes).toEqual({ definition: "unseen", read: "unseen", write: "unseen" });

@@ -560,6 +560,73 @@ export const practicalCommandConcepts: CommandConcept[] = [
   },
   {
     command: "awk",
+    concept: "field-separator",
+    label: "-F input field separator",
+    platform: "Portable POSIX awk on Linux and macOS",
+    references: [
+      { label: "POSIX", url: "https://pubs.opengroup.org/onlinepubs/9799919799/utilities/awk.html" },
+      { label: "TLDR", url: "https://tldr.inbrowser.app/pages/common/awk" },
+    ],
+    definition: {
+      prompt: "What does awk -F separator change?",
+      answer: "-F sets the input field separator before records are split. For simple delimiter characters, -F: and -F, make colon and comma the separators, so $1, $2, and later fields refer to the resulting pieces.\n\nMemory hook: F = input fields.",
+    },
+    read: {
+      prompt: "Input:\napi,ready\nweb,hold\nworker,ready\n\nCommand:\nawk -F, '$2 == \"ready\"'\n\nWhat is printed?",
+      choices: ["api,ready\nworker,ready", "api\nworker", "ready\nready", "All three input records"],
+      correctChoice: "api,ready\nworker,ready",
+      answer: "api,ready and worker,ready. -F, makes the comma separate fields; the comparison is true for those two records, and its missing action defaults to printing each complete record.",
+    },
+    write: {
+      prompt: "accounts.txt is colon-separated. Print only field 1 from every record. Which complete command fits?",
+      choices: [
+        "awk -F: '{ print $1 }' accounts.txt",
+        "awk -F, '{ print $1 }' accounts.txt",
+        "awk '{ print $0 }' accounts.txt",
+        "awk -F: '$1' accounts.txt",
+      ],
+      correctChoice: "awk -F: '{ print $1 }' accounts.txt",
+      answer: "awk -F: '{ print $1 }' accounts.txt sets the input separator before processing and explicitly prints only field 1 from every record.",
+    },
+  },
+  {
+    command: "awk",
+    concept: "implicit-print",
+    label: "pattern with implicit { print }",
+    platform: "Portable POSIX awk on Linux and macOS",
+    references: [
+      { label: "POSIX", url: "https://pubs.opengroup.org/onlinepubs/9799919799/utilities/awk.html" },
+      { label: "TLDR", url: "https://tldr.inbrowser.app/pages/common/awk" },
+    ],
+    definition: {
+      prompt: "What does awk do when a regex or comparison pattern has no action?",
+      answer: "A regex pattern such as /WARN/ and a comparison pattern such as $2 >= 500 both select records when true. With a missing action, awk uses the default action { print }; print with no arguments prints $0, the complete current record. Therefore /WARN/ { print } and /WARN/ select and print the same complete records.\n\nMemory hook: a bare true pattern passes the whole record through.",
+    },
+    read: {
+      prompt: "Input:\nINFO ready\nWARN disk\nWARN cpu\n\nCommand A:\nawk '/WARN/ { print }'\n\nCommand B:\nawk '/WARN/'\n\nWhat does each command print?",
+      choices: [
+        "Both print:\nWARN disk\nWARN cpu",
+        "A prints complete WARN records; B prints nothing",
+        "A prints WARN twice; B prints each complete record once",
+        "Both print only the word WARN",
+      ],
+      correctChoice: "Both print:\nWARN disk\nWARN cpu",
+      answer: "Both print the two complete WARN records. In A, print with no arguments prints $0. In B, the missing action supplies the same { print } default.",
+    },
+    write: {
+      prompt: "metrics.txt contains:\napi 503\nweb 200\nworker 502\n\nPrint each complete record whose second field is at least 500, using awk's implicit action. Which command fits?",
+      choices: [
+        "awk '$2 >= 500' metrics.txt",
+        "awk '$2 >= 500 { print $1 }' metrics.txt",
+        "awk '{ print $2 >= 500 }' metrics.txt",
+        "awk '$2 = 500' metrics.txt",
+      ],
+      correctChoice: "awk '$2 >= 500' metrics.txt",
+      answer: "awk '$2 >= 500' metrics.txt uses a comparison as the pattern and the missing action prints $0, so the complete api 503 and worker 502 records are emitted. Adding { print $1 } would emit only their first fields.",
+    },
+  },
+  {
+    command: "awk",
     concept: "pattern-action",
     label: "pattern { action }",
     platform: "Portable awk on Linux and macOS",
@@ -572,7 +639,7 @@ export const practicalCommandConcepts: CommandConcept[] = [
       answer: "For each input record, awk evaluates the pattern and runs the action only when the pattern is true. With no pattern, an action runs for every record. With a pattern but no action, awk performs the default action { print $0 }.\n\nMemory hook: test this record, then act on this record.",
     },
     read: {
-      prompt: "Input:\napi 503\nweb 200\nworker 502\n\nCommand:\nawk '$2 >= 500 {print $1}'\n\nWhat is printed?",
+      prompt: "Input:\napi 503\nweb 200\nworker 502\n\nCommand:\nawk '$2 >= 500 { print $1 }'\n\nWhat is printed?",
       choices: ["api\nworker", "web", "503\n502", "All three lines"],
       correctChoice: "api\nworker",
       answer: "api and worker. The action prints field 1 only for records whose second field is at least 500.",

@@ -335,6 +335,36 @@ describe("Quiz HTTP app", () => {
     expect(store.attemptCount()).toBe(1);
   });
 
+  it("replays a stored cut submission against its original answer", async () => {
+    const submissionId = "stored-cut-before-copy-change";
+    const stableId = commandExerciseId("cut", "literal-space-fields", "read");
+    const oldExpectedAnswer = "alpha, then an empty field, then beta";
+    store.recordAttempt({
+      submissionId,
+      stableId,
+      seed: null,
+      prompt: "old repeated-space cut fixture",
+      expectedAnswer: oldExpectedAnswer,
+      response: "old response",
+      correct: false,
+      rating: "again",
+      reviewedAt: "2026-01-01T00:00:00.000Z",
+    });
+
+    const response = await fetch(`${base}/practice`, {
+      method: "POST",
+      redirect: "manual",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ questionId: stableId, submissionId, response: "alpha  beta" }),
+    });
+
+    expect(response.status).toBe(303);
+    expect(response.headers.get("location")).toContain("result=incorrect");
+    expect(await (await fetch(`${base}${response.headers.get("location")}`)).text())
+      .toContain(`Expected answer: ${oldExpectedAnswer}`);
+    expect(store.attemptCount()).toBe(1);
+  });
+
   it("preserves exact file-content line breaks in redirection feedback", async () => {
     const item = contentBank.find((candidate) => candidate.id === "bash-output-append-v-truncate")!;
     const submissionId = "multiline-redirection-feedback";

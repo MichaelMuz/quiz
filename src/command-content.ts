@@ -9,6 +9,7 @@ import { perlCommandConcepts } from "./perl-command-content.js";
 import { findCommandConcepts } from "./find-command-content.js";
 import { kubectlConcepts } from "./kubectl-content.js";
 import { lessConcepts } from "./less-content.js";
+import { cutCommandConcepts } from "./cut-command-content.js";
 
 type CommandExerciseCopy = {
   prompt: string;
@@ -271,6 +272,7 @@ export const commandConcepts: CommandConcept[] = [
       answer: "find . -type f -print0 | xargs -0 sha256sum uses NUL at both sides of the pipeline.",
     },
   },
+  ...cutCommandConcepts,
   ...practicalCommandConcepts,
   ...perlCommandConcepts,
   ...findCommandConcepts,
