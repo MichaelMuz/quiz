@@ -12,11 +12,17 @@ describe("Quiz HTTP app", () => {
   let store: QuizStore;
   let server: ReturnType<typeof createQuizServer>;
   let base: string;
+  let warnings: string[];
 
   beforeEach(async () => {
     dir = mkdtempSync(join(tmpdir(), "quiz-http-"));
     store = new QuizStore(join(dir, "quiz.sqlite"));
-    server = createQuizServer(store, { seed: () => 1234, now: () => new Date("2026-01-02T03:04:05.000Z") });
+    warnings = [];
+    server = createQuizServer(store, {
+      seed: () => 1234,
+      now: () => new Date("2026-01-02T03:04:05.000Z"),
+      logger: { warn: (message) => warnings.push(message) },
+    });
     await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
     base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
   });
@@ -302,6 +308,145 @@ describe("Quiz HTTP app", () => {
     expect(store.attemptCount()).toBe(1);
   });
 
+  it("refreshes a stale multiple-choice page without grading its former answer", async () => {
+    const formerChoice = "out.txt = FIRST\\n; log.txt = OLD\\nSECOND\\n";
+    const submissionId = "static-bash-output-append-v-truncate-0";
+    const submit = () => fetch(`${base}/practice`, {
+      method: "POST",
+      redirect: "manual",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        questionId: "bash-output-append-v-truncate",
+        submissionId,
+        response: formerChoice,
+      }),
+    });
+
+    const response = await submit();
+
+    expect(response.status).toBe(303);
+    expect(response.headers.get("location")).toBe("/practice?result=stale");
+    expect(store.attemptBySubmission(submissionId)).toBeNull();
+    const refreshedPage = await (await fetch(`${base}${response.headers.get("location")}`)).text();
+    expect(refreshedPage).toContain("This question changed while the page was open. Nothing was recorded. Continue with the current quiz.");
+    expect((await submit()).status).toBe(303);
+    expect(store.attemptCount()).toBe(0);
+  });
+
+  it("does not grade a stale multiple-choice version when its answer text still matches", async () => {
+    const item = contentBank.find((candidate) => candidate.id === "bash-output-append-v-truncate")!;
+    const submissionId = "static-bash-output-append-v-truncate-stale-version";
+
+    const response = await fetch(`${base}/practice`, {
+      method: "POST",
+      redirect: "manual",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        questionId: item.id,
+        submissionId,
+        contentVersion: "former-page-version",
+        response: item.correctChoice!,
+      }),
+    });
+
+    expect(response.status).toBe(303);
+    expect(response.headers.get("location")).toBe("/practice?result=stale");
+    expect(store.attemptBySubmission(submissionId)).toBeNull();
+  });
+
+  it("does not grade a multiple-choice page after its feedback changes", async () => {
+    const item = contentBank.find((candidate) => candidate.id === "bash-output-append-v-truncate")!;
+    store.recordAttempt({
+      submissionId: "due-redirection-before-feedback-change",
+      stableId: item.id,
+      seed: null,
+      prompt: item.prompt,
+      expectedAnswer: item.answer,
+      response: null,
+      correct: false,
+      rating: "again",
+      reviewedAt: "2026-01-01T00:00:00.000Z",
+    });
+    const page = await (await fetch(`${base}/practice`)).text();
+    const submissionId = page.match(/name="submissionId" value="([^"]+)/)?.[1];
+    const version = page.match(/name="contentVersion" value="([^"]+)/)?.[1];
+    expect(page).toContain(`name="questionId" value="${item.id}"`);
+    expect(submissionId && version).toBeTruthy();
+    const originalAnswer = item.answer;
+    item.answer = "Changed feedback after the page rendered";
+
+    try {
+      const response = await fetch(`${base}/practice`, {
+        method: "POST",
+        redirect: "manual",
+        headers: { "content-type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({
+          questionId: item.id,
+          submissionId: submissionId!,
+          contentVersion: version!,
+          response: item.correctChoice!,
+        }),
+      });
+
+      expect(response.headers.get("location")).toBe("/practice?result=stale");
+      expect(store.attemptBySubmission(submissionId!)).toBeNull();
+    } finally {
+      item.answer = originalAnswer;
+    }
+  });
+
+  it("rejects a malformed choice from a current multiple-choice page", async () => {
+    const item = contentBank.find((candidate) => candidate.id === "bash-output-append-v-truncate")!;
+    store.recordAttempt({
+      submissionId: "due-redirection-before-malformed-choice",
+      stableId: item.id,
+      seed: null,
+      prompt: item.prompt,
+      expectedAnswer: item.answer,
+      response: null,
+      correct: false,
+      rating: "again",
+      reviewedAt: "2026-01-01T00:00:00.000Z",
+    });
+    const page = await (await fetch(`${base}/practice`)).text();
+    const submissionId = page.match(/name="submissionId" value="([^"]+)/)?.[1];
+    const version = page.match(/name="contentVersion" value="([^"]+)/)?.[1];
+
+    const response = await fetch(`${base}/practice`, {
+      method: "POST",
+      redirect: "manual",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        questionId: item.id,
+        submissionId: submissionId!,
+        contentVersion: version!,
+        response: "not a rendered choice",
+      }),
+    });
+
+    expect(response.status).toBe(400);
+    expect(warnings).toEqual(["[quiz] submission rejected category=invalid-choice"]);
+    expect(store.attemptBySubmission(submissionId!)).toBeNull();
+  });
+
+  it("refreshes a versioned multiple-choice page after its question is removed", async () => {
+    const submissionId = "static-retired-question-0";
+    const response = await fetch(`${base}/practice`, {
+      method: "POST",
+      redirect: "manual",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        questionId: "retired-question",
+        submissionId,
+        contentVersion: "retired-version",
+        response: "former choice",
+      }),
+    });
+
+    expect(response.headers.get("location")).toBe("/practice?result=stale");
+    expect(store.attemptBySubmission(submissionId)).toBeNull();
+  });
+
   it("replays a stored redirection submission after its stable card copy changes", async () => {
     const submissionId = "stored-redirection-before-copy-fix";
     const oldExpectedAnswer = "out.txt's old contents are replaced; log.txt's old contents are kept and new output is added";
@@ -435,16 +580,17 @@ describe("Quiz HTTP app", () => {
 
     const page = await (await fetch(`${base}/practice`)).text();
     const submissionId = page.match(/name="submissionId" value="([^"]+)/)?.[1];
+    const contentVersion = page.match(/name="contentVersion" value="([^"]+)/)?.[1];
     const item = commandExercises.find(({ id }) => id === readId)!;
     expect(page).toContain("fd · Read");
     expect(page).toContain('name="response"');
-    expect(submissionId).toBeTruthy();
+    expect(submissionId && contentVersion).toBeTruthy();
 
     const result = await fetch(`${base}/practice`, {
       method: "POST",
       redirect: "manual",
       headers: { "content-type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({ questionId: readId, submissionId: submissionId!, response: item.correctChoice! }),
+      body: new URLSearchParams({ questionId: readId, submissionId: submissionId!, contentVersion: contentVersion!, response: item.correctChoice! }),
     });
     expect(result.status).toBe(303);
     expect(result.headers.get("location")).toContain("result=correct");
@@ -503,6 +649,35 @@ describe("Quiz HTTP app", () => {
     expect(page).not.toContain("SECRET RAW RESPONSE");
   });
 
+  it("rejects replaying a submission ID for a different question", async () => {
+    store.recordAttempt({
+      submissionId: "already-recorded",
+      stableId: "mental-arithmetic",
+      seed: 1,
+      prompt: "fixture",
+      expectedAnswer: "1",
+      response: "1",
+      correct: true,
+      rating: "good",
+      reviewedAt: "2026-01-01T00:00:00.000Z",
+    });
+
+    const response = await fetch(`${base}/practice`, {
+      method: "POST",
+      redirect: "manual",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        questionId: "binary-prefix-ladder",
+        submissionId: "already-recorded",
+        rating: "good",
+      }),
+    });
+
+    expect(response.status).toBe(400);
+    expect(warnings).toEqual(["[quiz] submission rejected category=invalid-question"]);
+    expect(store.attemptCount()).toBe(1);
+  });
+
   it("rejects invalid question IDs", async () => {
     const response = await fetch(`${base}/practice`, {
       method: "POST",
@@ -510,5 +685,7 @@ describe("Quiz HTTP app", () => {
       body: new URLSearchParams({ questionId: "not-real", submissionId: "x", response: "1" }),
     });
     expect(response.status).toBe(400);
+    expect(warnings).toEqual(["[quiz] submission rejected category=invalid-question"]);
+    expect(warnings.join(" ")).not.toContain("not-real");
   });
 });

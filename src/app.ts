@@ -1,11 +1,18 @@
+import { createHash } from "node:crypto";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { contentBank, generateOrderingQuestion, generateQuestion, generatedDefinitions, gradeAnswer, type OrderingItem, type StaticItem } from "./content.js";
 import { buildCommandProgress } from "./progress.js";
 import type { QuizStore } from "./store.js";
 import { chooseStableId } from "./scheduler.js";
 
-type AppOptions = { seed?: () => number; now?: () => Date };
+type AppOptions = { seed?: () => number; now?: () => Date; logger?: Pick<Console, "warn"> };
 const sessionLength = 8;
+
+class InvalidSubmission extends Error {
+  constructor(readonly category: string) {
+    super(category);
+  }
+}
 
 function escape(value: string): string {
   return value.replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character]!);
@@ -22,9 +29,11 @@ function layout(body: string): string {
 
 function pageChrome(position: number, inner: string, result: string | null, expectedAnswer: string | null): string {
   const shown = position % sessionLength + 1;
-  const feedback = result && expectedAnswer
-    ? `<div class="result">${result === "correct" ? "Correct. Nice work." : "Not quite. Keep it moving."} Expected answer: ${escape(expectedAnswer)}</div>`
-    : "";
+  const feedback = result === "stale"
+    ? '<div class="result">This question changed while the page was open. Nothing was recorded. Continue with the current quiz.</div>'
+    : result && expectedAnswer
+      ? `<div class="result">${result === "correct" ? "Correct. Nice work." : "Not quite. Keep it moving."} Expected answer: ${escape(expectedAnswer)}</div>`
+      : "";
   return `<header><div class="brand">Qu<i>i</i>z</div><div class="header-side"><a class="nav" href="/progress">Progress</a><div class="counter">Question ${shown} of ${sessionLength}</div></div></header>
     <div class="track"><span style="width:${shown / sessionLength * 100}%"></span></div>
     ${feedback}${inner}`;
@@ -35,6 +44,12 @@ function references(item: StaticItem): string {
   if (!links.length) return "";
   return `<div class="references">${links.map((reference) =>
     `<a class="source" href="${escape(reference.url)}" target="_blank" rel="noreferrer">${escape(reference.label)}</a>`).join("")}</div>`;
+}
+
+function contentVersion(item: StaticItem): string {
+  return createHash("sha256")
+    .update(JSON.stringify([item.id, item.prompt, item.answer, item.choices, item.correctChoice]))
+    .digest("base64url");
 }
 
 function renderStatic(item: StaticItem, position: number, result: string | null, expectedAnswer: string | null): string {
@@ -49,7 +64,7 @@ function renderStatic(item: StaticItem, position: number, result: string | null,
     const choices = item.choices.map((choice) =>
       `<button class="choice command-choice" name="response" value="${escape(choice)}">${escape(choice)}</button>`).join("");
     return pageChrome(position, `<section class="card">${heading}<form class="choices" method="post" action="/practice">
-      <input type="hidden" name="questionId" value="${escape(item.id)}"><input type="hidden" name="submissionId" value="${submissionId}">${choices}</form></section>`, result, expectedAnswer);
+      <input type="hidden" name="questionId" value="${escape(item.id)}"><input type="hidden" name="submissionId" value="${submissionId}"><input type="hidden" name="contentVersion" value="${contentVersion(item)}">${choices}</form></section>`, result, expectedAnswer);
   }
   const choices = item.choices ? `<div class="choices">${item.choices.map((choice) => `<button class="choice" type="button" onclick="this.closest('.card').querySelector('details').open=true">${escape(choice)}</button>`).join("")}</div>` : "";
   return pageChrome(position, `<section class="card">${heading}${choices}
@@ -121,7 +136,7 @@ async function formBody(request: IncomingMessage): Promise<URLSearchParams> {
   let length = 0;
   for await (const chunk of request) {
     length += chunk.length;
-    if (length > 8_192) throw new Error("Form too large");
+    if (length > 8_192) throw new InvalidSubmission("form-too-large");
     chunks.push(chunk);
   }
   return new URLSearchParams(Buffer.concat(chunks).toString("utf8"));
@@ -130,6 +145,7 @@ async function formBody(request: IncomingMessage): Promise<URLSearchParams> {
 export function createQuizServer(store: QuizStore, options: AppOptions = {}) {
   const seed = options.seed ?? (() => Math.floor(Math.random() * 0x7fffffff));
   const now = options.now ?? (() => new Date());
+  const logger = options.logger ?? console;
   return createServer(async (request: IncomingMessage, response: ServerResponse) => {
     const url = new URL(request.url ?? "/", "http://quiz.local");
     if (request.method === "GET" && (url.pathname === "/healthz" || url.pathname === "/readyz")) {
@@ -164,9 +180,14 @@ export function createQuizServer(store: QuizStore, options: AppOptions = {}) {
         const submissionId = form.get("submissionId") ?? "";
         const generated = generatedDefinitions.find((item) => item.id === questionId);
         const item = contentBank.find((candidate) => candidate.id === questionId);
-        if ((!generated && !item) || !submissionId) throw new Error("Invalid question");
+        const submittedContentVersion = form.get("contentVersion");
+        if (submittedContentVersion && (!item?.correctChoice || !item.choices)) {
+          response.writeHead(303, { location: "/practice?result=stale" }).end(); return;
+        }
+        if ((!generated && !item) || !submissionId) throw new InvalidSubmission("invalid-question");
         const existing = store.attemptBySubmission(submissionId);
         if (existing) {
+          if (existing.stableId !== questionId) throw new InvalidSubmission("invalid-question");
           const suffix = existing.correct === null ? "" : `?result=${existing.correct ? "correct" : "incorrect"}&review=${encodeURIComponent(submissionId)}`;
           response.writeHead(303, { location: `/practice${suffix}` }).end(); return;
         }
@@ -174,7 +195,7 @@ export function createQuizServer(store: QuizStore, options: AppOptions = {}) {
         let correct: boolean | null = null;
         if (generated) {
           const pending = store.getPending(questionId);
-          if (!pending) throw new Error("Question is no longer pending");
+          if (!pending) throw new InvalidSubmission("question-not-pending");
           const userResponse = form.get("response") ?? "";
           correct = gradeAnswer(pending.grader, userResponse, pending.expectedAnswer);
           store.recordAttempt({ submissionId, stableId: questionId, seed: pending.seed, prompt: pending.prompt,
@@ -182,12 +203,12 @@ export function createQuizServer(store: QuizStore, options: AppOptions = {}) {
         } else if (item!.kind === "ordering") {
           const ordering = item as OrderingItem;
           const pending = store.getPending(questionId);
-          if (!pending) throw new Error("Question is no longer pending");
+          if (!pending) throw new InvalidSubmission("question-not-pending");
           const canonicalItems = parseStoredOrder(pending.expectedAnswer, "ordering answer");
           const submittedItems = form.getAll("response");
           if (submittedItems.length !== canonicalItems.length
             || new Set(submittedItems).size !== canonicalItems.length
-            || !submittedItems.every((value) => canonicalItems.includes(value))) throw new Error("Invalid order");
+            || !submittedItems.every((value) => canonicalItems.includes(value))) throw new InvalidSubmission("invalid-order");
           const userResponse = JSON.stringify(submittedItems);
           correct = gradeAnswer(pending.grader, userResponse, pending.expectedAnswer);
           store.recordAttempt({ submissionId, stableId: ordering.id, seed: pending.seed, prompt: pending.prompt,
@@ -196,19 +217,24 @@ export function createQuizServer(store: QuizStore, options: AppOptions = {}) {
         } else {
           if (item!.correctChoice) {
             const userResponse = form.get("response") ?? "";
-            if (!item!.choices?.includes(userResponse)) throw new Error("Invalid choice");
+            if (submittedContentVersion !== contentVersion(item!)) {
+              response.writeHead(303, { location: "/practice?result=stale" }).end(); return;
+            }
+            if (!item!.choices?.includes(userResponse)) throw new InvalidSubmission("invalid-choice");
             correct = userResponse === item!.correctChoice;
             store.recordAttempt({ submissionId, stableId: item!.id, seed: null, prompt: item!.prompt,
               expectedAnswer: item!.answer, response: userResponse, correct, rating: correct ? "good" : "again", reviewedAt });
           } else {
             const rating = form.get("rating");
-            if (!(["again", "hard", "good", "easy"] as string[]).includes(rating ?? "")) throw new Error("Invalid rating");
+            if (!(["again", "hard", "good", "easy"] as string[]).includes(rating ?? "")) throw new InvalidSubmission("invalid-rating");
             store.recordAttempt({ submissionId, stableId: item!.id, seed: null, prompt: item!.prompt,
               expectedAnswer: item!.answer, response: null, correct: null, rating: rating as "again" | "hard" | "good" | "easy", reviewedAt });
           }
         }
         response.writeHead(303, { location: `/practice${correct === null ? "" : `?result=${correct ? "correct" : "incorrect"}&review=${encodeURIComponent(submissionId)}`}` }).end(); return;
-      } catch {
+      } catch (error) {
+        const category = error instanceof InvalidSubmission ? error.category : "internal-error";
+        logger.warn(`[quiz] submission rejected category=${category}`);
         response.writeHead(400, { "content-type": "text/plain; charset=utf-8" }).end("Invalid submission"); return;
       }
     }
