@@ -73,7 +73,7 @@ export const doomUnixTransferItems: StaticItem[] = [
     kind: "flashcard",
     topic: "Doom ↔ Unix transfer",
     prompt: "Match Evil's shell-filter forms to their source scope: !{motion}, visual !, !!, and :%!. What changes immediately?",
-    answer: "!{motion} filters the text covered by the motion. Visual ! filters the selected range. !! filters the current line. :%! filters the whole buffer. Each sends the range to the shell command's stdin and replaces it with successful stdout. This mutates the in-memory buffer only; the file on disk changes when you deliberately save. At the pinned Evil implementation, a failing filter preserves the original range and displays the command error instead of replacing it with failed output.",
+    answer: "!{motion} filters the text covered by the motion. Visual ! filters the selected range. !! filters the current line. :%! filters the whole buffer. Each sends the range to the shell command's stdin and, on success, replaces it with successful stdout. This mutates the in-memory buffer only; the file on disk changes when you deliberately save. A nonzero command status is not a rollback guarantee: with Evil's pinned default, failed-command output can still replace the range unless evil-display-shell-error-in-message is non-nil. Use undo if a filter fails unexpectedly.",
     choices: [
       "motion range; visual range; current line; whole buffer",
       "current file; selected files; current line; whole project",
@@ -131,15 +131,15 @@ export const doomUnixTransferItems: StaticItem[] = [
     id: "doom-unix-regex-lookbehind-boundary",
     kind: "flashcard",
     topic: "Doom ↔ Unix transfer",
-    prompt: "You used (?<=ticket:)[0-9]+ with rg -P to print only the digits after ticket:. Where can you paste that exact pattern unchanged?",
-    answer: "Only the explicit rg -P case promises PCRE2 syntax here. Do not paste that lookbehind unchanged into plain rg, SPC /, or Evil search. Plain rg defaults to Rust regex without look-around. SPC / accepts Emacs regexp and lets Consult translate it. Evil uses its configured Vim-style search translation. On those surfaces, rewrite the goal in that dialect, for example match ticket: plus the digits when a wider match is acceptable, rather than assuming PCRE2 syntax transfers.",
+    prompt: "You used rg -o -P '(?<=ticket:)[0-9]+' to print only the digits after ticket:. Where can you paste that exact pattern unchanged?",
+    answer: "Only the explicit rg -o -P case promises this output and dialect here: -o prints only the matching bytes, while -P selects PCRE2 for the lookbehind. Do not paste that lookbehind unchanged into plain rg, SPC /, or Evil search. Plain rg defaults to Rust regex without look-around. SPC / accepts Emacs regexp and lets Consult translate it. Evil uses its configured Vim-style search translation. On those surfaces, rewrite the goal in that dialect, for example match ticket: plus the digits when a wider match is acceptable, rather than assuming PCRE2 syntax transfers.",
     choices: [
-      "Only rg -P, because it selects PCRE2; not plain rg, SPC /, or Evil search",
+      "Only rg -o -P, because -o selects the match bytes and -P selects PCRE2; not plain rg, SPC /, or Evil search",
       "Plain rg and rg -P, but not SPC / or Evil search",
       "SPC / only, because Consult invokes ripgrep",
       "Every surface, because all regular expressions share lookbehind syntax",
     ],
-    correctChoice: "Only rg -P, because it selects PCRE2; not plain rg, SPC /, or Evil search",
+    correctChoice: "Only rg -o -P, because -o selects the match bytes and -P selects PCRE2; not plain rg, SPC /, or Evil search",
     references: [consultSource, { label: "ripgrep FAQ, look-around", url: "https://github.com/BurntSushi/ripgrep/blob/master/FAQ.md#how-do-i-use-lookaround-and-backreferences" }],
   },
   {

@@ -89,6 +89,8 @@ describe("static questions", () => {
     const filterScopes = items[3]!;
     expect(filterScopes.answer).toMatch(/!\{motion\}.*visual.*!.*!!.*current line.*:%!.*whole buffer/is);
     expect(filterScopes.answer).toMatch(/stdin.*successful stdout.*in-memory buffer.*save/is);
+    expect(filterScopes.answer).toMatch(/nonzero.*can still replace.*evil-display-shell-error-in-message/is);
+    expect(filterScopes.answer).not.toMatch(/failing filter preserves the original range/i);
 
     const readWrite = items[4]!;
     expect(readWrite.correctChoice).toBe(":read !command inserts stdout; :%write !command sends the whole buffer without replacing it");
@@ -111,8 +113,10 @@ describe("static questions", () => {
     })).toBe("TODO7\nTODO42\n");
 
     const lookbehind = items[7]!;
+    expect(lookbehind.prompt).toContain("rg -o -P");
     expect(lookbehind.prompt).toContain("(?<=ticket:)[0-9]+");
-    expect(lookbehind.correctChoice).toMatch(/rg -P.*PCRE2.*not.*SPC \/.*Evil/is);
+    expect(lookbehind.correctChoice).toMatch(/rg -o -P.*PCRE2.*not.*SPC \/.*Evil/is);
+    expect(lookbehind.answer).toMatch(/-o.*matching bytes.*-P.*PCRE2/is);
     expect(lookbehind.answer).toMatch(/rewrite.*dialect.*match.*ticket:.*digits/is);
     expect(execFileSync("rg", ["-P", "-o", "(?<=ticket:)[0-9]+"], {
       input: "ticket:42 issue:7\n", encoding: "utf8", env: { ...process.env, LC_ALL: "C" },
