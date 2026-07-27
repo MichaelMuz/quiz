@@ -510,6 +510,36 @@ describe("Quiz HTTP app", () => {
     expect(store.attemptCount()).toBe(1);
   });
 
+  it("replays a stored watch submission against its original answer", async () => {
+    const submissionId = "stored-watch-before-copy-change";
+    const stableId = commandExerciseId("watch", "shell-command-boundary", "read");
+    const oldExpectedAnswer = "the outer shell owned the old pipeline";
+    store.recordAttempt({
+      submissionId,
+      stableId,
+      seed: null,
+      prompt: "old watch quoting fixture",
+      expectedAnswer: oldExpectedAnswer,
+      response: "old response",
+      correct: false,
+      rating: "again",
+      reviewedAt: "2026-01-01T00:00:00.000Z",
+    });
+
+    const response = await fetch(`${base}/practice`, {
+      method: "POST",
+      redirect: "manual",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ questionId: stableId, submissionId, response: "new card answer" }),
+    });
+
+    expect(response.status).toBe(303);
+    expect(response.headers.get("location")).toContain("result=incorrect");
+    expect(await (await fetch(`${base}${response.headers.get("location")}`)).text())
+      .toContain(`Expected answer: ${oldExpectedAnswer}`);
+    expect(store.attemptCount()).toBe(1);
+  });
+
   it("preserves exact file-content line breaks in redirection feedback", async () => {
     const item = contentBank.find((candidate) => candidate.id === "bash-output-append-v-truncate")!;
     const submissionId = "multiline-redirection-feedback";
