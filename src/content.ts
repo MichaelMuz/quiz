@@ -1,6 +1,7 @@
 import { bashExpansionItems } from "./bash-expansion-content.js";
 import { commandExercises } from "./command-content.js";
 import { doomUnixTransferItems } from "./doom-unix-transfer-content.js";
+import { gitInvestigationItems } from "./git-investigation-content.js";
 import { processExitItems } from "./process-exit-content.js";
 
 export { commandConcepts, commandExerciseId, commandExercises } from "./command-content.js";
@@ -285,6 +286,7 @@ export const contentBank: StaticItem[] = [
     ],
   },
   ...doomUnixTransferItems,
+  ...gitInvestigationItems,
   ...commandExercises,
 ];
 
