@@ -216,7 +216,7 @@ export function createQuizServer(store: QuizStore, options: AppOptions = {}) {
             response: userResponse, correct, rating: correct ? "good" : "again", reviewedAt });
         } else {
           if (item!.correctChoice) {
-            const userResponse = form.get("response") ?? "";
+            const userResponse = (form.get("response") ?? "").replace(/\r\n?/g, "\n");
             if (submittedContentVersion !== contentVersion(item!)) {
               response.writeHead(303, { location: "/practice?result=stale" }).end(); return;
             }

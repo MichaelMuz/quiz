@@ -429,6 +429,46 @@ describe("Quiz HTTP app", () => {
     expect(store.attemptBySubmission(submissionId!)).toBeNull();
   });
 
+  it("accepts browser-normalized line breaks in a multiline multiple-choice value", async () => {
+    const item = contentBank.find((candidate) => candidate.id === "doom-unix-filter-exact-output")!;
+    store.recordAttempt({
+      submissionId: "due-doom-unix-multiline-choice",
+      stableId: item.id,
+      seed: null,
+      prompt: item.prompt,
+      expectedAnswer: item.answer,
+      response: null,
+      correct: false,
+      rating: "again",
+      reviewedAt: "2026-01-01T00:00:00.000Z",
+    });
+    const page = await (await fetch(`${base}/practice`)).text();
+    const submissionId = page.match(/name="submissionId" value="([^"]+)/)?.[1];
+    const version = page.match(/name="contentVersion" value="([^"]+)/)?.[1];
+    expect(page).toContain(`name="questionId" value="${item.id}"`);
+
+    const browserValue = item.correctChoice!.replace(/\n/g, "\r\n");
+    const response = await fetch(`${base}/practice`, {
+      method: "POST",
+      redirect: "manual",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        questionId: item.id,
+        submissionId: submissionId!,
+        contentVersion: version!,
+        response: browserValue,
+      }),
+    });
+
+    expect(response.status).toBe(303);
+    expect(response.headers.get("location")).toContain("result=correct");
+    expect(store.attemptBySubmission(submissionId!)).toMatchObject({
+      stableId: item.id,
+      response: item.correctChoice,
+      correct: true,
+    });
+  });
+
   it("refreshes a versioned multiple-choice page after its question is removed", async () => {
     const submissionId = "static-retired-question-0";
     const response = await fetch(`${base}/practice`, {
