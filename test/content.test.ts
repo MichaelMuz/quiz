@@ -50,6 +50,78 @@ describe("content validation", () => {
 });
 
 describe("static questions", () => {
+  it("ships a bounded Doom and Unix transfer cohort with explicit source, scope, engine, and write boundaries", () => {
+    const ids = [
+      "doom-unix-search-surface-map",
+      "doom-unix-search-scope-choice",
+      "doom-unix-filter-exact-output",
+      "doom-unix-filter-scope-map",
+      "doom-unix-read-v-write-boundary",
+      "doom-unix-wgrep-write-pipeline",
+      "doom-unix-regex-common-subset",
+      "doom-unix-regex-lookbehind-boundary",
+      "doom-unix-boundary-diagnosis",
+    ];
+    const items = ids.map((id) => contentBank.find((candidate) => candidate.id === id));
+    expect(items.every(Boolean)).toBe(true);
+    expect(contentBank.filter(({ id }) => id.startsWith("doom-unix-")).map(({ id }) => id)).toEqual(ids);
+    expect(new Set(items.map((item) => item!.id)).size).toBe(ids.length);
+    expect(items.every((item) => !item!.correctChoice || item!.choices?.includes(item!.correctChoice))).toBe(true);
+
+    const searchMap = items[0]!;
+    expect(searchMap.answer).toMatch(/SPC SPC.*file-name candidates.*fd.*rg --files.*not.*content/is);
+    expect(searchMap.answer).toMatch(/SPC \/.*project.*files on disk.*Consult.*Emacs regexp.*ripgrep/is);
+    expect(searchMap.answer).toMatch(/SPC s d.*current directory.*SPC s p.*other known project/is);
+    expect(searchMap.answer).toMatch(/SPC s b.*current buffer.*SPC s B.*open buffers.*unsaved/is);
+
+    const scopeChoice = items[1]!;
+    expect(scopeChoice.correctChoice).toBe("SPC s B, because Consult searches all open buffer contents");
+    expect(scopeChoice.answer).toMatch(/SPC \/.*files on disk.*unsaved/is);
+
+    const exactOutput = items[2]!;
+    expect(exactOutput.prompt).toContain("printf '%s\\n' beta ALPHA beta Alpha | tr '[:upper:]' '[:lower:]' | sort -u");
+    expect(exactOutput.prompt).toContain("tr '[:upper:]' '[:lower:]' | sort -u");
+    expect(exactOutput.correctChoice).toBe("alpha\nbeta\n(final newline present)");
+    expect(execFileSync("bash", ["-c", "printf '%s\\n' beta ALPHA beta Alpha | tr '[:upper:]' '[:lower:]' | sort -u"], {
+      encoding: "utf8", env: { ...process.env, LC_ALL: "C" },
+    })).toBe("alpha\nbeta\n");
+
+    const filterScopes = items[3]!;
+    expect(filterScopes.answer).toMatch(/!\{motion\}.*visual.*!.*!!.*current line.*:%!.*whole buffer/is);
+    expect(filterScopes.answer).toMatch(/stdin.*successful stdout.*in-memory buffer.*save/is);
+
+    const readWrite = items[4]!;
+    expect(readWrite.correctChoice).toBe(":read !command inserts stdout; :%write !command sends the whole buffer without replacing it");
+    expect(readWrite.answer).toMatch(/below the current line.*does not replace.*whole buffer.*stdin.*does not replace/is);
+
+    const writePipeline = items[5]!;
+    expect(writePipeline.kind).toBe("ordering");
+    expect(writePipeline.orderedItems).toEqual([
+      "SPC / asks Doom for an rg-backed project search over files on disk",
+      "C-c C-e exports the Consult grep candidates through Embark into writable wgrep results",
+      "Editing the exported result changes the wgrep buffer, not the files yet",
+      "Finishing the wgrep edit applies changes and Doom's auto-save setting writes the affected file buffers",
+    ]);
+
+    const commonSubset = items[6]!;
+    expect(commonSubset.correctChoice).toBe("TODO[0-9][0-9]*");
+    expect(commonSubset.answer).toMatch(/common subset.*not.*universal regex/is);
+    expect(execFileSync("rg", ["-o", "TODO[0-9][0-9]*"], {
+      input: "TODO7 TODO42 nope\n", encoding: "utf8", env: { ...process.env, LC_ALL: "C" },
+    })).toBe("TODO7\nTODO42\n");
+
+    const lookbehind = items[7]!;
+    expect(lookbehind.prompt).toContain("(?<=ticket:)[0-9]+");
+    expect(lookbehind.correctChoice).toMatch(/rg -P.*PCRE2.*not.*SPC \/.*Evil/is);
+    expect(lookbehind.answer).toMatch(/rewrite.*dialect.*match.*ticket:.*digits/is);
+    expect(execFileSync("rg", ["-P", "-o", "(?<=ticket:)[0-9]+"], {
+      input: "ticket:42 issue:7\n", encoding: "utf8", env: { ...process.env, LC_ALL: "C" },
+    })).toBe("42\n");
+
+    const diagnosis = items[8]!;
+    expect(diagnosis.correctChoice).toMatch(/SPC s b.*in-memory buffer.*rg.*saved files on disk/is);
+  });
+
   it("tests numerical latency anchors rather than relative ordering", () => {
     const item = contentBank.find((candidate) => candidate.id === "systems-latency-orders");
     expect(item).toBeDefined();

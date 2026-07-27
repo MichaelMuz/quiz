@@ -34,6 +34,32 @@ describe("transparent interval scheduler", () => {
     ]) expect(ids).toContain(id);
   });
 
+  it("keeps every Doom and Unix transfer card independently reachable and resurfaces a miss", () => {
+    const transferIds = [
+      "doom-unix-search-surface-map",
+      "doom-unix-search-scope-choice",
+      "doom-unix-filter-exact-output",
+      "doom-unix-filter-scope-map",
+      "doom-unix-read-v-write-boundary",
+      "doom-unix-wgrep-write-pipeline",
+      "doom-unix-regex-common-subset",
+      "doom-unix-regex-lookbehind-boundary",
+      "doom-unix-boundary-diagnosis",
+    ];
+    const mixedIds = new Set(Array.from({ length: 1_000 }, (_, position) =>
+      chooseStableId(position, [], new Date("2026-01-02T00:00:00.000Z"))));
+    for (const id of transferIds) expect(mixedIds).toContain(id);
+
+    expect(chooseStableId(0, [{
+      stableId: "doom-unix-filter-exact-output",
+      interval: 0,
+      reviews: 1,
+      successfulReviews: 0,
+      dueAt: "2026-01-02T00:00:00.000Z",
+      updatedAt: "2026-01-02T00:00:00.000Z",
+    }], new Date("2026-01-02T00:00:00.000Z"))).toBe("doom-unix-filter-exact-output");
+  });
+
   it("keeps expansion ordering and every applied fixture reachable and resurfaces a missed order", () => {
     const expansionIds = [
       "bash-effective-shell-expansion-order",

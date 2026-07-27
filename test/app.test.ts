@@ -480,6 +480,41 @@ describe("Quiz HTTP app", () => {
     expect(store.attemptCount()).toBe(1);
   });
 
+  it("replays stored paired-transfer feedback by stable ID after the live card changes", async () => {
+    const item = contentBank.find((candidate) => candidate.id === "doom-unix-filter-exact-output");
+    expect(item).toBeDefined();
+    const submissionId = "stored-doom-unix-filter-answer";
+    const oldExpectedAnswer = "alpha\nbeta\n(old pinned explanation)";
+    store.recordAttempt({
+      submissionId,
+      stableId: item!.id,
+      seed: null,
+      prompt: "old paired fixture",
+      expectedAnswer: oldExpectedAnswer,
+      response: oldExpectedAnswer,
+      correct: true,
+      rating: "good",
+      reviewedAt: "2026-01-01T00:00:00.000Z",
+    });
+
+    const response = await fetch(`${base}/practice`, {
+      method: "POST",
+      redirect: "manual",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        questionId: item!.id,
+        submissionId,
+        response: oldExpectedAnswer,
+      }),
+    });
+
+    expect(response.status).toBe(303);
+    expect(response.headers.get("location")).toContain("result=correct");
+    expect(await (await fetch(`${base}${response.headers.get("location")}`)).text())
+      .toContain("Expected answer: alpha\nbeta\n(old pinned explanation)");
+    expect(store.attemptCount()).toBe(1);
+  });
+
   it("replays a stored cut submission against its original answer", async () => {
     const submissionId = "stored-cut-before-copy-change";
     const stableId = commandExerciseId("cut", "literal-space-fields", "read");

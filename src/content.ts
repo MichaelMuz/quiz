@@ -1,5 +1,6 @@
 import { bashExpansionItems } from "./bash-expansion-content.js";
 import { commandExercises } from "./command-content.js";
+import { doomUnixTransferItems } from "./doom-unix-transfer-content.js";
 import { processExitItems } from "./process-exit-content.js";
 
 export { commandConcepts, commandExerciseId, commandExercises } from "./command-content.js";
@@ -283,6 +284,7 @@ export const contentBank: StaticItem[] = [
       { label: "GNU Bash manual, Bourne Shell Builtins", url: "https://www.gnu.org/software/bash/manual/html_node/Bourne-Shell-Builtins.html" },
     ],
   },
+  ...doomUnixTransferItems,
   ...commandExercises,
 ];
 
