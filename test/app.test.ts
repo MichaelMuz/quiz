@@ -47,6 +47,8 @@ describe("Quiz HTTP app", () => {
     expect(page).toContain("Question 1 of 8");
     expect(page).toContain("@media(max-width:480px){.header-side{flex-direction:column;align-items:flex-end;gap:2px}.counter{display:block;font-size:.76rem}}");
     expect(page).toContain(".command-choice{white-space:pre-wrap;overflow-wrap:anywhere;min-width:0}");
+    expect(page).toContain("pre{white-space:pre-wrap;overflow-wrap:anywhere;");
+    expect(page).toContain("@media(max-width:390px){pre{font-size:.82rem;padding:14px}");
     const id = page.match(/name="questionId" value="([^"]+)/)?.[1];
     const submission = page.match(/name="submissionId" value="([^"]+)/)?.[1];
     const seed = page.match(/name="seed" value="(\d+)/)?.[1];
