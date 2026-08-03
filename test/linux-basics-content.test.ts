@@ -91,6 +91,9 @@ describe("practical Fedora and Linux fluency", () => {
     expect(ring.prompt).toMatch(/dmesg.*journalctl -k/is);
     expect(ring.answer).toMatch(/live kernel ring buffer.*journal-retained kernel.*not.*strict superset/is);
     expect(ring.answer).toMatch(/capture.*permissions.*rate limit.*retention.*boot/is);
+    expect(ring.references?.map(({ label }) => label)).toContain(
+      "util-linux 2.43.devel-739-eee2e dmesg(1) documentation, accessed 2026-08-03",
+    );
 
     expect(item("linux-logs-boot-selection").correctChoice).toMatch(/journalctl -k -b -1/);
     expect(item("linux-logs-unit-v-status").answer).toMatch(/systemctl status.*bounded.*journalctl.*-u.*fuller/is);

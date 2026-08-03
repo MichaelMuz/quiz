@@ -87,7 +87,7 @@ const systemctlReference = {
   url: "https://www.freedesktop.org/software/systemd/man/latest/systemctl.html",
 };
 const dmesgReference = {
-  label: `util-linux 2.41 dmesg(1) documentation, ${accessedAt}`,
+  label: `util-linux 2.43.devel-739-eee2e dmesg(1) documentation, ${accessedAt}`,
   url: "https://man7.org/linux/man-pages/man1/dmesg.1.html",
 };
 const fhsReference = {

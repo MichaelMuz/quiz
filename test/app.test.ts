@@ -89,6 +89,47 @@ describe("Quiz HTTP app", () => {
     expect(reviewPage).toContain("Question 2 of 8");
   });
 
+  it("keeps DNF5 query-format identifiers intact in prompts, choices, and feedback", async () => {
+    const item = contentBank.find(({ id }) => id === "linux-dnf-installed-available-provenance")!;
+    store.recordAttempt({
+      submissionId: "due-dnf-query-format",
+      stableId: item.id,
+      seed: null,
+      prompt: item.prompt,
+      expectedAnswer: item.answer,
+      response: item.choices![1]!,
+      correct: false,
+      rating: "again",
+      reviewedAt: "2026-01-01T00:00:00.000Z",
+    });
+
+    const page = await (await fetch(`${base}/practice`)).text();
+    expect(page).toContain(`name="questionId" value="${item.id}"`);
+    expect(page).toContain('<span class="query-format">%{full_nevra}</span>');
+    expect(page).toContain('<span class="query-format">%{from_repo}</span>');
+    expect(page).toContain(".query-format{white-space:nowrap}");
+
+    const submissionId = page.match(/name="submissionId" value="([^"]+)"/)?.[1];
+    const version = page.match(/name="contentVersion" value="([^"]+)"/)?.[1];
+    expect(submissionId && version).toBeTruthy();
+    const response = await fetch(`${base}/practice`, {
+      method: "POST",
+      redirect: "manual",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        questionId: item.id,
+        submissionId: submissionId!,
+        contentVersion: version!,
+        response: item.correctChoice!,
+      }),
+    });
+    expect(response.status).toBe(303);
+
+    const reviewPage = await (await fetch(`${base}${response.headers.get("location")}`)).text();
+    expect(reviewPage).toMatch(/Expected answer:.*<span class="query-format">%\{full_nevra\}<\/span>/s);
+    expect(reviewPage).toMatch(/Expected answer:.*<span class="query-format">%\{from_repo\}<\/span>/s);
+  });
+
   it("renders a persistent non-drag ordering control and grades its exact submitted order", async () => {
     store.recordAttempt({
       submissionId: "due-ordering",
