@@ -3,6 +3,7 @@ import { commandExercises } from "./command-content.js";
 import { doomUnixTransferItems } from "./doom-unix-transfer-content.js";
 import { gitInvestigationItems } from "./git-investigation-content.js";
 import { iamControlPlaneItems } from "./iam-control-plane-content.js";
+import { iamPolicyInvestigationItems } from "./iam-policy-investigation-content.js";
 import { linuxBasicsItems } from "./linux-basics-content.js";
 import { processExitItems } from "./process-exit-content.js";
 import { vpcControlPlaneItems } from "./vpc-control-plane-content.js";
@@ -291,6 +292,7 @@ export const contentBank: StaticItem[] = [
   ...doomUnixTransferItems,
   ...gitInvestigationItems,
   ...iamControlPlaneItems,
+  ...iamPolicyInvestigationItems,
   ...vpcControlPlaneItems,
   ...linuxBasicsItems,
   ...commandExercises,
