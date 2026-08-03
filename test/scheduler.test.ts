@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { commandExerciseId, commandExercises } from "../src/content.js";
+import { commandExerciseId, commandExercises, contentBank } from "../src/content.js";
 import { chooseStableId } from "../src/scheduler.js";
 
 describe("transparent interval scheduler", () => {
@@ -95,7 +95,8 @@ describe("transparent interval scheduler", () => {
       dueAt: "2026-01-01T00:00:00.000Z",
       updatedAt: "2026-01-01T00:00:00.000Z",
     };
-    const beforeDefinition = Array.from({ length: 200 }, (_, position) =>
+    const queueWindow = contentBank.length * 2;
+    const beforeDefinition = Array.from({ length: queueWindow }, (_, position) =>
       chooseStableId(position, [lockedDue], new Date("2026-01-02T00:00:00.000Z")));
     expect(beforeDefinition).not.toContain(readId);
     expect(beforeDefinition).not.toContain(writeId);
@@ -108,7 +109,7 @@ describe("transparent interval scheduler", () => {
       dueAt: "2099-01-01T00:00:00.000Z",
       updatedAt: "2026-01-01T00:00:00.000Z",
     };
-    const afterDefinition = Array.from({ length: 200 }, (_, position) =>
+    const afterDefinition = Array.from({ length: queueWindow }, (_, position) =>
       chooseStableId(position, [definition], new Date("2026-01-02T00:00:00.000Z")));
     expect(afterDefinition).toContain(readId);
     expect(afterDefinition).not.toContain(writeId);
@@ -121,7 +122,7 @@ describe("transparent interval scheduler", () => {
       dueAt: "2099-01-01T00:00:00.000Z",
       updatedAt: "2026-01-01T00:00:00.000Z",
     };
-    const afterRead = Array.from({ length: 200 }, (_, position) =>
+    const afterRead = Array.from({ length: queueWindow }, (_, position) =>
       chooseStableId(position, [definition, read], new Date("2026-01-02T00:00:00.000Z")));
     expect(afterRead).toContain(writeId);
   });
