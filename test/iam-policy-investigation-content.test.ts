@@ -24,8 +24,10 @@ describe("AWS IAM policy grammar and denial investigation", () => {
     const grammar = item("iam-policy-json-grammar");
 
     expect(grammar.prompt).toMatch(/Version.*Statement.*Principal/is);
-    expect(grammar.correctChoice).toMatch(/Version.*top-level.*Statement.*Effect.*Action.*Resource.*Condition/is);
+    expect(grammar.correctChoice).toMatch(/Version.*top-level.*Statement.*policy type/is);
     expect(grammar.answer).toMatch(/Action.*NotAction.*Resource.*NotResource.*Principal.*NotPrincipal/is);
+    expect(grammar.answer).toMatch(/permissions polic(?:y|ies).*Resource.*NotResource/is);
+    expect(grammar.answer).toMatch(/role trust polic(?:y|ies).*omit.*Resource.*attached role.*implicit target/is);
     expect(grammar.answer).toMatch(/Principal.*resource-based.*not allowed.*identity-based/is);
     expect(grammar.answer).not.toMatch(/five (?:universally )?required fields/i);
   });

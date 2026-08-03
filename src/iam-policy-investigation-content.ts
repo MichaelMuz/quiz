@@ -83,13 +83,13 @@ export const iamPolicyInvestigationItems: StaticItem[] = [
     topic: "AWS IAM investigation",
     prompt: "A teammate says every IAM policy needs Version inside each Statement alongside Effect, Principal, Action, and Resource. Which correction matches IAM JSON grammar?",
     choices: [
-      "Version is top-level; each Statement selects elements such as Effect, Action, and Resource, with Condition when needed. Principal depends on the policy type",
+      "Version is top-level; Statement elements depend on policy type. Ordinary permissions statements select Resource or NotResource, while a role trust statement can omit either. Principal belongs in resource-based policies",
       "Version belongs inside every Statement and Principal is required in every identity policy",
       "Condition is required in every Statement and replaces Resource when present",
       "Action and NotAction can be combined in one Statement to describe exceptions",
     ],
-    correctChoice: "Version is top-level; each Statement selects elements such as Effect, Action, and Resource, with Condition when needed. Principal depends on the policy type",
-    answer: "There is no five-field universal Statement rule. `Version` is a top-level policy element, normally `2012-10-17`. `Statement` entries use `Effect` and select `Action` or `NotAction`, `Resource` or `NotResource`, and, where applicable, `Principal` or `NotPrincipal`; `Condition` is optional. `Principal` names who in a resource-based policy. It is not allowed in an identity-based policy because the attached user, group, or role supplies that identity scope.",
+    correctChoice: "Version is top-level; Statement elements depend on policy type. Ordinary permissions statements select Resource or NotResource, while a role trust statement can omit either. Principal belongs in resource-based policies",
+    answer: "There is no five-field universal Statement rule. `Version` is a top-level policy element, normally `2012-10-17`. `Statement` entries use `Effect` and select `Action` or `NotAction`. Ordinary permissions policy statements also select `Resource` or `NotResource`, and `Condition` is optional. Role trust policy statements use `Principal` or `NotPrincipal` to name who may assume the role, and can omit `Resource` because the attached role is the implicit target. `Principal` names who in a resource-based policy and is not allowed in an identity-based policy because the attached user, group, or role supplies that identity scope.",
     references: [policyElementsReference, principalReference],
   },
   {
