@@ -121,6 +121,7 @@ describe("EKS workload identity and SigV4 fluency", () => {
     const objects = item("workload-auth-pod-identity-objects");
     expect(objects.correctChoice).toMatch(/EKS association.*ServiceAccount.*role.*pods\.eks\.amazonaws\.com/is);
     expect(objects.answer).toMatch(/IRSA.*OIDC provider.*Pod Identity.*association.*agent.*Fargate.*Windows/is);
+    expect(objects.answer).toMatch(/Pod Identity.*AWS\/EKS-specific.*OIDC federation.*more portable/is);
 
     const flow = item("workload-auth-pod-identity-flow-order");
     expect(flow.orderedItems).toEqual([

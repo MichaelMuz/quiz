@@ -226,7 +226,7 @@ export const workloadIdentityItems: StaticItem[] = [
       "Pod Identity stores a permanent IAM secret in the ServiceAccount Secret object",
     ],
     correctChoice: "An EKS association maps cluster/namespace/ServiceAccount to a role whose trust names pods.eks.amazonaws.com; IRSA instead trusts a cluster OIDC provider",
-    answer: "IRSA uses a cluster IAM OIDC provider, role trust conditions on `aud` and `sub`, and usually a role annotation on the ServiceAccount. EKS Pod Identity keeps the workload-to-role mapping in an EKS association and uses direct role trust for the `pods.eks.amazonaws.com` service principal. That trust can be reused across clusters, while each cluster needs its own association. Pod Identity also requires the node agent and a supported SDK; the agent is not available for Fargate Pods or Windows Pods, so those operational constraints matter before choosing it.",
+    answer: "IRSA uses a cluster IAM OIDC provider, role trust conditions on `aud` and `sub`, and usually a role annotation on the ServiceAccount. EKS Pod Identity keeps the workload-to-role mapping in an EKS association and uses direct role trust for the `pods.eks.amazonaws.com` service principal. That trust can be reused across clusters, while each cluster needs its own association. Pod Identity is AWS/EKS-specific, while OIDC federation is the more portable primitive across Kubernetes platforms and cloud boundaries. Pod Identity also requires the node agent and a supported SDK; the agent is not available for Fargate Pods or Windows Pods, so those operational constraints matter before choosing it.",
     references: [irsaReference, podIdentityReference, podIdentityAssociationReference],
   },
   {
