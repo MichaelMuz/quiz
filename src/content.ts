@@ -1,4 +1,5 @@
 import { bashExpansionItems } from "./bash-expansion-content.js";
+import { cidrItems } from "./cidr-content.js";
 import { commandExercises } from "./command-content.js";
 import { doomUnixTransferItems } from "./doom-unix-transfer-content.js";
 import { gitInvestigationItems } from "./git-investigation-content.js";
@@ -7,6 +8,7 @@ import { iamPolicyInvestigationItems } from "./iam-policy-investigation-content.
 import { linuxBasicsItems } from "./linux-basics-content.js";
 import { processExitItems } from "./process-exit-content.js";
 import { vpcControlPlaneItems } from "./vpc-control-plane-content.js";
+import { workloadIdentityItems } from "./workload-identity-content.js";
 
 export { commandConcepts, commandExerciseId, commandExercises } from "./command-content.js";
 export type { CommandConcept } from "./command-content.js";
@@ -289,10 +291,12 @@ export const contentBank: StaticItem[] = [
       { label: "GNU Bash manual, Bourne Shell Builtins", url: "https://www.gnu.org/software/bash/manual/html_node/Bourne-Shell-Builtins.html" },
     ],
   },
+  ...cidrItems,
   ...doomUnixTransferItems,
   ...gitInvestigationItems,
   ...iamControlPlaneItems,
   ...iamPolicyInvestigationItems,
+  ...workloadIdentityItems,
   ...vpcControlPlaneItems,
   ...linuxBasicsItems,
   ...commandExercises,
@@ -305,6 +309,7 @@ export const generatedDefinitions: GeneratedDefinition[] = [
   { id: "binary-prefix-exponent", generator: "binary-prefix-exponent", grader: "integer" },
   { id: "binary-amount-exponent", generator: "binary-amount-exponent", grader: "integer" },
   { id: "binary-exponent-prefix", generator: "binary-exponent-prefix", grader: "iec-prefix" },
+  { id: "cidr-ipv4-address-count", generator: "cidr-ipv4-address-count", grader: "integer", active: true },
 ];
 
 export const activeGeneratedDefinitions = generatedDefinitions.filter((definition) => definition.active !== false);
@@ -326,6 +331,8 @@ const binaryPrefixes = [
   { unit: "EiB", exponent: 60 },
 ] as const;
 
+const cidrPrefixes = [20, 21, 26, 30] as const;
+
 const generators: Record<string, (seed: number) => Omit<GeneratedQuestion, "stableId" | "grader">> = {
   arithmetic(seed) {
     const next = random(seed);
@@ -335,6 +342,17 @@ const generators: Record<string, (seed: number) => Omit<GeneratedQuestion, "stab
     return multiply
       ? { seed, prompt: `${a} × ${b} = ?`, expectedAnswer: String(a * b) }
       : { seed, prompt: `${a + b} − ${b} = ?`, expectedAnswer: String(a) };
+  },
+  "cidr-ipv4-address-count"(seed) {
+    const next = random(seed);
+    const prefix = cidrPrefixes[Math.floor(next() * cidrPrefixes.length)]!;
+    const addressCount = 2 ** (32 - prefix);
+    return {
+      seed,
+      prompt: `For an IPv4 /${prefix} prefix, how many total addresses are in the block?`,
+      expectedAnswer: String(addressCount),
+      feedback: `IPv4 has 32 bits. A /${prefix} leaves ${32 - prefix} variable bits, so the block has 2^${32 - prefix} = ${addressCount} total addresses. Usable-host conventions are a separate question.`,
+    };
   },
   "decimal-units"(seed) {
     const next = random(seed);
