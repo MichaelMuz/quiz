@@ -797,6 +797,78 @@ describe("Quiz HTTP app", () => {
     expect(page).not.toContain("SECRET RAW RESPONSE");
   });
 
+  it("renders and replays a SQL support answer with its dialect and contextual desktop practice link", async () => {
+    const item = contentBank.find((candidate) => candidate.id === "sql-support-window-default-frame")!;
+    store.recordAttempt({
+      submissionId: "due-sql-window-frame",
+      stableId: item.id,
+      seed: null,
+      prompt: "older SQL prompt",
+      expectedAnswer: "older stored explanation",
+      response: "older response",
+      correct: false,
+      rating: "again",
+      reviewedAt: "2026-01-01T00:00:00.000Z",
+    });
+
+    const page = await (await fetch(`${base}/practice`)).text();
+    expect(page).toContain(`name="questionId" value="${item.id}"`);
+    expect(page).toContain("SQL support · Predict");
+    expect(page).toContain('<div class="platform dialect">Dialect: PostgreSQL 18</div>');
+    expect(page).toContain("SUM(amount) OVER (ORDER BY amount)");
+    expect(page).toContain(".desktop-practice");
+    const submissionId = page.match(/name="submissionId" value="([^"]+)"/)?.[1];
+    const contentVersion = page.match(/name="contentVersion" value="([^"]+)"/)?.[1];
+    expect(submissionId && contentVersion).toBeTruthy();
+
+    const response = await fetch(`${base}/practice`, {
+      method: "POST",
+      redirect: "manual",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        questionId: item.id,
+        submissionId: submissionId!,
+        contentVersion: contentVersion!,
+        response: item.correctChoice!,
+      }),
+    });
+    expect(response.status).toBe(303);
+    expect(response.headers.get("location")).toContain("result=correct");
+
+    const reviewPage = await (await fetch(`${base}${response.headers.get("location")}`)).text();
+    expect(reviewPage).toContain("Expected answer: With ORDER BY and no explicit frame");
+    expect(reviewPage).toContain("Practice this at a computer: PostgreSQL Exercises rolling window");
+    expect(reviewPage).toContain('href="https://pgexercises.com/questions/aggregates/rollingavg.html" target="_blank" rel="noreferrer"');
+
+    const replay = await fetch(`${base}/practice`, {
+      method: "POST",
+      redirect: "manual",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        questionId: item.id,
+        submissionId: "due-sql-window-frame",
+        response: "older response",
+      }),
+    });
+    const replayPage = await (await fetch(`${base}${replay.headers.get("location")}`)).text();
+    expect(replayPage).toContain("Expected answer: older stored explanation");
+    expect(replayPage).toContain("Practice this at a computer: PostgreSQL Exercises rolling window");
+  });
+
+  it("shows the bounded SQL desktop progression and exit criterion outside the ordinary queue", async () => {
+    const page = await (await fetch(`${base}/progress`)).text();
+    expect(page).toContain("SQL construction at a computer");
+    expect(page).toContain("Practice this at a computer");
+    expect(page).toContain(".sql-steps .source{display:flex;min-height:44px");
+    expect(page).toContain('href="https://pgexercises.com/questions/basic/"');
+    expect(page).toContain('href="https://pgexercises.com/questions/aggregates/"');
+    expect(page).toContain('href="https://leetcode.com/studyplan/top-sql-50/"');
+    expect(page).toContain('href="https://leetcode.com/studyplan/premium-sql-50/"');
+    expect(page).toContain("writing most medium queries without hints");
+    expect(page).toContain("DataLemur only if harder breadth is still useful");
+    expect(page).not.toContain("HackerRank");
+  });
+
   it("rejects replaying a submission ID for a different question", async () => {
     store.recordAttempt({
       submissionId: "already-recorded",

@@ -7,6 +7,7 @@ import { iamControlPlaneItems } from "./iam-control-plane-content.js";
 import { iamPolicyInvestigationItems } from "./iam-policy-investigation-content.js";
 import { linuxBasicsItems } from "./linux-basics-content.js";
 import { processExitItems } from "./process-exit-content.js";
+import { sqlSupportItems } from "./sql-support-content.js";
 import { vpcControlPlaneItems } from "./vpc-control-plane-content.js";
 import { workloadIdentityItems } from "./workload-identity-content.js";
 
@@ -26,7 +27,7 @@ export type CommandMetadata = {
 };
 export type StaticItem = {
   id: string;
-  kind: "flashcard" | "bash" | "command" | "ordering";
+  kind: "flashcard" | "bash" | "command" | "ordering" | "sql";
   topic: string;
   prompt: string;
   answer: string;
@@ -36,6 +37,8 @@ export type StaticItem = {
   source?: { label: string; url: string };
   references?: Reference[];
   command?: CommandMetadata;
+  dialect?: "Portable SQL" | "PostgreSQL 18";
+  desktopPractice?: Reference;
 };
 export type OrderingItem = StaticItem & { kind: "ordering"; orderedItems: string[] };
 export type GeneratedDefinition = { id: string; generator: string; grader: string; active?: boolean };
@@ -299,6 +302,7 @@ export const contentBank: StaticItem[] = [
   ...workloadIdentityItems,
   ...vpcControlPlaneItems,
   ...linuxBasicsItems,
+  ...sqlSupportItems,
   ...commandExercises,
 ];
 

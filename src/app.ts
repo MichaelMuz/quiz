@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { contentBank, generateOrderingQuestion, generateQuestion, generatedDefinitions, gradeAnswer, type OrderingItem, type StaticItem } from "./content.js";
 import { buildCommandProgress } from "./progress.js";
+import { sqlDesktopProgression } from "./sql-support-content.js";
 import type { QuizStore } from "./store.js";
 import { chooseStableId } from "./scheduler.js";
 
@@ -27,16 +28,21 @@ function layout(body: string): string {
   <title>Quiz</title><style>
   :root{color-scheme:dark;--ink:#f8f7ff;--muted:#aaa6c2;--card:#211d38;--line:#393254;--violet:#8b5cf6;--cyan:#22d3ee;--good:#4ade80;--bad:#fb7185}*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 90% 0,#29325c 0,transparent 30rem),#100e1b;color:var(--ink);font:16px/1.5 system-ui,sans-serif;min-height:100vh}main{width:min(100% - 28px,680px);margin:auto;padding:24px 0 56px}header{display:flex;align-items:center;justify-content:space-between;margin-bottom:26px}.brand{font-weight:900;font-size:1.35rem;letter-spacing:-.04em}.brand i{color:var(--cyan);font-style:normal}.counter{color:var(--muted);font-size:.88rem}.track{height:7px;background:#29243f;border-radius:9px;margin:0 0 22px;overflow:hidden}.track span{display:block;height:100%;background:linear-gradient(90deg,var(--violet),var(--cyan));border-radius:9px}.card{background:color-mix(in srgb,var(--card) 94%,transparent);border:1px solid var(--line);border-radius:22px;padding:clamp(20px,6vw,34px);box-shadow:0 25px 80px #05040b66}.eyebrow{color:var(--cyan);font-size:.75rem;font-weight:800;letter-spacing:.14em;text-transform:uppercase}h1{font-size:clamp(1.45rem,7vw,2.2rem);line-height:1.18;letter-spacing:-.035em;margin:13px 0 24px}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#11101a;border:1px solid #343047;padding:18px;border-radius:14px;color:#d8f8ff;font:600 .96rem/1.65 ui-monospace,monospace;overflow:auto}input[type=text]{width:100%;font:700 1.35rem system-ui;padding:16px 17px;border:2px solid #494263;border-radius:14px;background:#151323;color:white;outline:none;margin-bottom:12px}input:focus{border-color:var(--cyan);box-shadow:0 0 0 4px #22d3ee22}button,.button{min-height:52px;border:0;border-radius:14px;padding:13px 18px;font:800 1rem system-ui;cursor:pointer;color:#110e20;background:linear-gradient(135deg,#a78bfa,var(--cyan));width:100%}.choices,.ratings{display:grid;gap:10px}.choice{background:#312b49;color:var(--ink);border:1px solid #4c446a;text-align:left}.reveal summary{list-style:none}.reveal summary::-webkit-details-marker{display:none}.answer{margin-top:16px;padding:17px;background:#161426;border-left:4px solid var(--cyan);border-radius:10px;color:#dedbea}.ratings{grid-template-columns:repeat(2,1fr);margin-top:14px}.ratings button{color:white;background:#332e4b}.ratings button[value=again]{border-bottom:3px solid var(--bad)}.ratings button[value=easy]{border-bottom:3px solid var(--good)}.result{padding:12px 16px;margin-bottom:14px;border-radius:12px;background:#213b34;color:#a7f3d0}.source{display:inline-block;color:#a5eff9;margin-top:16px;font-size:.88rem}@media(min-width:540px){main{padding-top:42px}.ratings{grid-template-columns:repeat(4,1fr)}}
   .ordering-list{display:grid;gap:10px;list-style:none;margin:0 0 16px;padding:0}.ordering-item{display:flex;align-items:center;gap:10px;min-width:0;background:#181529;border:1px solid #4c446a;border-radius:14px;padding:9px 10px}.order-label{flex:1;min-width:0;font-weight:800;overflow-wrap:anywhere}.order-controls{display:flex;gap:6px;flex:0 0 auto}.order-move{width:44px;min-height:44px;padding:0;background:#312b49;color:var(--ink);border:1px solid #62587f;font-size:1.2rem}.order-move:focus-visible{outline:3px solid var(--cyan);outline-offset:2px}.order-move:disabled{opacity:.35;cursor:not-allowed}.ordering-help{color:var(--muted);margin:-12px 0 16px}
-  .header-side{display:flex;align-items:center;gap:12px}.nav{color:#a5eff9;text-decoration:none;font-size:.88rem;font-weight:800}.platform{color:var(--muted);font-size:.82rem;margin:-16px 0 20px}.answer{white-space:pre-wrap}.result{white-space:pre-wrap}.references{display:flex;gap:14px;flex-wrap:wrap}.command-choice{white-space:pre-wrap;overflow-wrap:anywhere;min-width:0}.query-format{white-space:nowrap}.progress-card h1{margin-bottom:8px}.progress-intro{color:var(--muted);margin:0 0 24px}.command-group+ .command-group{margin-top:28px}.command-group h2{font:900 1.35rem ui-monospace,monospace;color:var(--cyan);margin:0 0 12px}.concept{background:#181529;border:1px solid #37304f;border-radius:14px;padding:14px;margin-top:10px}.concept h3{font:800 1rem ui-monospace,monospace;margin:0 0 4px}.concept-platform{color:var(--muted);font-size:.76rem;margin-bottom:10px}.mode-row{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}.mode{background:#27223c;border-radius:9px;padding:8px 6px;text-align:center}.mode-label{display:block;color:var(--muted);font-size:.68rem;text-transform:uppercase;letter-spacing:.06em}.status{display:block;font-size:.78rem;font-weight:850;margin-top:2px}.status.learning{color:#fde68a}.status.established{color:var(--good)}.status.unseen{color:#c4bfd8}@media(max-width:390px){pre{font-size:.82rem;padding:14px}.counter{display:none}.mode-label{font-size:.62rem}}@media(max-width:480px){.header-side{flex-direction:column;align-items:flex-end;gap:2px}.counter{display:block;font-size:.76rem}}
+  .header-side{display:flex;align-items:center;gap:12px}.nav{color:#a5eff9;text-decoration:none;font-size:.88rem;font-weight:800}.platform{color:var(--muted);font-size:.82rem;margin:-16px 0 20px}.dialect{color:#c4bfd8;font-weight:700;margin:-12px 0 22px}.answer{white-space:pre-wrap}.result{white-space:pre-wrap}.references{display:flex;gap:14px;flex-wrap:wrap}.desktop-practice{background:#181529;border:1px solid #4c446a;border-radius:12px;margin:-4px 0 14px;padding:4px 14px 12px}.desktop-practice .source{min-height:44px;display:flex;align-items:center}.command-choice{white-space:pre-wrap;overflow-wrap:anywhere;min-width:0}.query-format{white-space:nowrap}.progress-card h1{margin-bottom:8px}.progress-card+ .progress-card{margin-top:18px}.progress-intro{color:var(--muted);margin:0 0 24px}.sql-steps{margin:0;padding-left:22px}.sql-steps li+li{margin-top:6px}.sql-steps .source{display:flex;min-height:44px;align-items:center;margin-top:0}.exit-criterion{background:#181529;border-left:4px solid var(--cyan);border-radius:10px;margin:20px 0 0;padding:14px}.command-group+ .command-group{margin-top:28px}.command-group h2{font:900 1.35rem ui-monospace,monospace;color:var(--cyan);margin:0 0 12px}.concept{background:#181529;border:1px solid #37304f;border-radius:14px;padding:14px;margin-top:10px}.concept h3{font:800 1rem ui-monospace,monospace;margin:0 0 4px}.concept-platform{color:var(--muted);font-size:.76rem;margin-bottom:10px}.mode-row{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}.mode{background:#27223c;border-radius:9px;padding:8px 6px;text-align:center}.mode-label{display:block;color:var(--muted);font-size:.68rem;text-transform:uppercase;letter-spacing:.06em}.status{display:block;font-size:.78rem;font-weight:850;margin-top:2px}.status.learning{color:#fde68a}.status.established{color:var(--good)}.status.unseen{color:#c4bfd8}@media(max-width:390px){pre{font-size:.82rem;padding:14px}.counter{display:none}.mode-label{font-size:.62rem}}@media(max-width:480px){.header-side{flex-direction:column;align-items:flex-end;gap:2px}.counter{display:block;font-size:.76rem}}
   </style></head><body><main>${body}</main></body></html>`;
 }
 
-function pageChrome(position: number, inner: string, result: string | null, expectedAnswer: string | null): string {
+function pageChrome(position: number, inner: string, result: string | null, expectedAnswer: string | null, reviewedStableId: string | null): string {
   const shown = position % sessionLength + 1;
+  const desktopPractice = result && expectedAnswer && reviewedStableId
+    ? contentBank.find((item) => item.id === reviewedStableId)?.desktopPractice
+    : undefined;
   const feedback = result === "stale"
     ? '<div class="result">This question changed while the page was open. Nothing was recorded. Continue with the current quiz.</div>'
     : result && expectedAnswer
-      ? `<div class="result">${result === "correct" ? "Correct. Nice work." : "Not quite. Keep it moving."} Expected answer: ${renderText(expectedAnswer)}</div>`
+      ? `<div class="result">${result === "correct" ? "Correct. Nice work." : "Not quite. Keep it moving."} Expected answer: ${renderText(expectedAnswer)}</div>${desktopPractice
+        ? `<div class="desktop-practice"><a class="source" href="${escape(desktopPractice.url)}" target="_blank" rel="noreferrer">${escape(desktopPractice.label)}</a></div>`
+        : ""}`
       : "";
   return `<header><div class="brand">Qu<i>i</i>z</div><div class="header-side"><a class="nav" href="/progress">Progress</a><div class="counter">Question ${shown} of ${sessionLength}</div></div></header>
     <div class="track"><span style="width:${shown / sessionLength * 100}%"></span></div>
@@ -56,25 +62,29 @@ function contentVersion(item: StaticItem): string {
     .digest("base64url");
 }
 
-function renderStatic(item: StaticItem, position: number, result: string | null, expectedAnswer: string | null): string {
+function renderStatic(item: StaticItem, position: number, result: string | null, expectedAnswer: string | null, reviewedStableId: string | null): string {
   const submissionId = `static-${item.id}-${position}`;
   const commandMode = item.command?.mode;
-  const mode = commandMode ? commandMode[0]!.toUpperCase() + commandMode.slice(1) : item.kind === "bash" ? "Predict" : "Recall";
-  const codePrompt = item.kind === "bash" || (item.kind === "command" && commandMode !== "definition");
+  const mode = commandMode ? commandMode[0]!.toUpperCase() + commandMode.slice(1) : item.kind === "bash" || item.kind === "sql" ? "Predict" : "Recall";
+  const codePrompt = item.kind === "bash" || item.kind === "sql" || (item.kind === "command" && commandMode !== "definition");
   const prompt = codePrompt ? `<pre><code>${renderText(item.prompt)}</code></pre>` : `<h1>${renderText(item.prompt)}</h1>`;
-  const platform = item.command ? `<div class="platform">${escape(item.command.platform)}</div>` : "";
+  const platform = item.command
+    ? `<div class="platform">${escape(item.command.platform)}</div>`
+    : item.dialect
+      ? `<div class="platform dialect">Dialect: ${escape(item.dialect)}</div>`
+      : "";
   const heading = `<div class="eyebrow">${escape(item.topic)} · ${mode}</div>${prompt}${platform}`;
   if (item.correctChoice && item.choices) {
     const choices = item.choices.map((choice) =>
       `<button class="choice command-choice" name="response" value="${escape(choice)}">${renderText(choice)}</button>`).join("");
     return pageChrome(position, `<section class="card">${heading}<form class="choices" method="post" action="/practice">
-      <input type="hidden" name="questionId" value="${escape(item.id)}"><input type="hidden" name="submissionId" value="${submissionId}"><input type="hidden" name="contentVersion" value="${contentVersion(item)}">${choices}</form></section>`, result, expectedAnswer);
+      <input type="hidden" name="questionId" value="${escape(item.id)}"><input type="hidden" name="submissionId" value="${submissionId}"><input type="hidden" name="contentVersion" value="${contentVersion(item)}">${choices}</form></section>`, result, expectedAnswer, reviewedStableId);
   }
   const choices = item.choices ? `<div class="choices">${item.choices.map((choice) => `<button class="choice" type="button" onclick="this.closest('.card').querySelector('details').open=true">${escape(choice)}</button>`).join("")}</div>` : "";
   return pageChrome(position, `<section class="card">${heading}${choices}
     <details class="reveal"><summary class="button">Reveal answer</summary><div class="answer">${renderText(item.answer)}</div>${references(item)}
     <form class="ratings" method="post" action="/practice"><input type="hidden" name="questionId" value="${escape(item.id)}"><input type="hidden" name="submissionId" value="${submissionId}">
-    ${(["again", "hard", "good", "easy"] as const).map((rating) => `<button name="rating" value="${rating}">${rating[0]!.toUpperCase() + rating.slice(1)}</button>`).join("")}</form></details></section>`, result, expectedAnswer);
+    ${(["again", "hard", "good", "easy"] as const).map((rating) => `<button name="rating" value="${rating}">${rating[0]!.toUpperCase() + rating.slice(1)}</button>`).join("")}</form></details></section>`, result, expectedAnswer, reviewedStableId);
 }
 
 function parseStoredOrder(serialized: string, label: string): string[] {
@@ -90,7 +100,7 @@ function parseStoredOrder(serialized: string, label: string): string[] {
   return values;
 }
 
-function renderOrdering(store: QuizStore, item: OrderingItem, position: number, result: string | null, expectedAnswer: string | null, seed: () => number): string {
+function renderOrdering(store: QuizStore, item: OrderingItem, position: number, result: string | null, expectedAnswer: string | null, reviewedStableId: string | null, seed: () => number): string {
   const pending = store.getOrCreatePending(item.id, () => generateOrderingQuestion(item, seed()));
   const canonicalItems = parseStoredOrder(pending.expectedAnswer, "ordering answer");
   const presentation = pending.presentation ?? generateOrderingQuestion(item, pending.seed).presentation!;
@@ -111,15 +121,15 @@ function renderOrdering(store: QuizStore, item: OrderingItem, position: number, 
   return pageChrome(position, `<section class="card"><div class="eyebrow">${escape(item.topic)} · Put in order</div><h1>${escape(item.prompt)}</h1>
     <p class="ordering-help" id="ordering-help">Use each item's arrow buttons. No dragging required.</p>
     <form method="post" action="/practice"><input type="hidden" name="questionId" value="${escape(item.id)}"><input type="hidden" name="submissionId" value="${submissionId}">
-    <ol class="ordering-list" aria-label="Current order" aria-describedby="ordering-help">${rows}</ol><button>Check order</button></form>${references(item)}${script}</section>`, result, expectedAnswer);
+    <ol class="ordering-list" aria-label="Current order" aria-describedby="ordering-help">${rows}</ol><button>Check order</button></form>${references(item)}${script}</section>`, result, expectedAnswer, reviewedStableId);
 }
 
-function renderGenerated(store: QuizStore, id: string, position: number, result: string | null, expectedAnswer: string | null, seed: () => number): string {
+function renderGenerated(store: QuizStore, id: string, position: number, result: string | null, expectedAnswer: string | null, reviewedStableId: string | null, seed: () => number): string {
   const question = store.getOrCreatePending(id, () => generateQuestion(id, seed()));
   const prefixRecall = question.grader === "iec-prefix";
   return pageChrome(position, `<section class="card"><div class="eyebrow">${prefixRecall ? "Quick recall" : "Quick calculation"}</div><h1>${escape(question.prompt)}</h1>
     <form method="post" action="/practice"><input type="hidden" name="questionId" value="${escape(id)}"><input type="hidden" name="submissionId" value="generated-${escape(id)}-${question.seed}"><input type="hidden" name="seed" value="${question.seed}">
-    <input name="response" type="text" inputmode="${prefixRecall ? "text" : "numeric"}" autocomplete="off" maxlength="24" aria-label="Your answer" required autofocus><button>Check answer</button></form></section>`, result, expectedAnswer);
+    <input name="response" type="text" inputmode="${prefixRecall ? "text" : "numeric"}" autocomplete="off" maxlength="24" aria-label="Your answer" required autofocus><button>Check answer</button></form></section>`, result, expectedAnswer, reviewedStableId);
 }
 
 function renderProgress(store: QuizStore): string {
@@ -130,7 +140,14 @@ function renderProgress(store: QuizStore): string {
         const status = concept.modes[mode];
         return `<div class="mode"><span class="mode-label">${mode[0]!.toUpperCase() + mode.slice(1)}</span><span class="status ${status}">${status[0]!.toUpperCase() + status.slice(1)}</span></div>`;
       }).join("")}</div></article>`).join("")}</section>`).join("");
+  const sqlSteps = [sqlDesktopProgression.primary, sqlDesktopProgression.aggregatesAndWindows,
+    sqlDesktopProgression.transfer, sqlDesktopProgression.advanced]
+    .map((resource) => `<li><a class="source" href="${escape(resource.url)}" target="_blank" rel="noreferrer">${escape(resource.label)} ↗</a></li>`)
+    .join("");
   return `<header><a class="brand nav" href="/practice">Qu<i>i</i>z</a><a class="nav" href="/practice">Practice</a></header>
+    <section class="card progress-card"><div class="eyebrow">Practice this at a computer</div><h1>SQL construction at a computer</h1>
+    <p class="progress-intro">Use one stable schema to make query formation fluent, then switch schemas to prove transfer.</p>
+    <ol class="sql-steps">${sqlSteps}</ol><p class="exit-criterion"><strong>Exit criterion:</strong> ${escape(sqlDesktopProgression.exitCriterion)}</p></section>
     <section class="card progress-card"><div class="eyebrow">Command literacy</div><h1>Command mastery</h1>
     <p class="progress-intro">Unseen means not practiced yet. Established requires repeated successful reviews, not one lucky answer.</p>${groups}</section>`;
 }
@@ -167,14 +184,15 @@ export function createQuizServer(store: QuizStore, options: AppOptions = {}) {
       const result = url.searchParams.get("result");
       const reviewed = store.attemptBySubmission(url.searchParams.get("review") ?? "");
       const expectedAnswer = reviewed?.correct === null ? null : reviewed?.expectedAnswer ?? null;
+      const reviewedStableId = reviewed?.stableId ?? null;
       const stableId = chooseStableId(position, store.allReviewStates(), now());
       const generated = generatedDefinitions.some((item) => item.id === stableId);
       const item = contentBank.find((candidate) => candidate.id === stableId);
       const body = generated
-        ? renderGenerated(store, stableId, position, result, expectedAnswer, seed)
+        ? renderGenerated(store, stableId, position, result, expectedAnswer, reviewedStableId, seed)
         : item?.kind === "ordering"
-          ? renderOrdering(store, item as OrderingItem, position, result, expectedAnswer, seed)
-          : renderStatic(item!, position, result, expectedAnswer);
+          ? renderOrdering(store, item as OrderingItem, position, result, expectedAnswer, reviewedStableId, seed)
+          : renderStatic(item!, position, result, expectedAnswer, reviewedStableId);
       response.writeHead(200, { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" }).end(layout(body)); return;
     }
     if (request.method === "POST" && url.pathname === "/practice") {
