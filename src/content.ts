@@ -6,6 +6,7 @@ import { gitInvestigationItems } from "./git-investigation-content.js";
 import { iamControlPlaneItems } from "./iam-control-plane-content.js";
 import { iamPolicyInvestigationItems } from "./iam-policy-investigation-content.js";
 import { linuxBasicsItems } from "./linux-basics-content.js";
+import { linuxPermissionsContainerItems } from "./linux-permissions-container-content.js";
 import { processExitItems } from "./process-exit-content.js";
 import { sqlSupportItems } from "./sql-support-content.js";
 import { vpcControlPlaneItems } from "./vpc-control-plane-content.js";
@@ -302,6 +303,7 @@ export const contentBank: StaticItem[] = [
   ...workloadIdentityItems,
   ...vpcControlPlaneItems,
   ...linuxBasicsItems,
+  ...linuxPermissionsContainerItems,
   ...sqlSupportItems,
   ...commandExercises,
 ];
