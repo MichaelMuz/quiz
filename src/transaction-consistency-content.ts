@@ -1,0 +1,313 @@
+import type { Reference, StaticItem } from "./content.js";
+
+const accessedAt = "accessed 2026-08-07";
+
+const serializabilityReference: Reference = {
+  label: `Papadimitriou, The Serializability of Concurrent Database Updates, ${accessedAt}`,
+  url: "https://cs.purdue.edu/homes/bb/cs542-06Spr-bb/SCDU-Papa-79.pdf",
+};
+const linearizabilityReference: Reference = {
+  label: `Herlihy and Wing, Linearizability: A Correctness Condition for Concurrent Objects, ${accessedAt}`,
+  url: "https://cs.brown.edu/people/mph/HerlihyW90/p463-herlihy.pdf",
+};
+const strictSerializabilityReference: Reference = {
+  label: `Regular Sequential Serializability, SOSP 2021, ${accessedAt}`,
+  url: "https://www.cs.cornell.edu/~matthelb/papers/rss-sosp21.pdf",
+};
+const transactionConceptReference: Reference = {
+  label: `Jim Gray, The Transaction Concept: Virtues and Limitations, ${accessedAt}`,
+  url: "https://jimgray.azurewebsites.net/papers/theTransactionConcept.pdf",
+};
+const postgresGlossaryReference: Reference = {
+  label: `PostgreSQL 18 glossary, ${accessedAt}`,
+  url: "https://www.postgresql.org/docs/current/glossary.html",
+};
+const postgresTransactionsReference: Reference = {
+  label: `PostgreSQL 18 transaction tutorial, ${accessedAt}`,
+  url: "https://www.postgresql.org/docs/current/tutorial-transactions.html",
+};
+const postgresIsolationReference: Reference = {
+  label: `PostgreSQL 18 transaction isolation, ${accessedAt}`,
+  url: "https://www.postgresql.org/docs/current/transaction-iso.html",
+};
+const postgresMvccReference: Reference = {
+  label: `PostgreSQL 18 MVCC introduction, ${accessedAt}`,
+  url: "https://www.postgresql.org/docs/current/mvcc-intro.html",
+};
+const postgresRetryReference: Reference = {
+  label: `PostgreSQL 18 serialization failure handling, ${accessedAt}`,
+  url: "https://www.postgresql.org/docs/current/mvcc-serialization-failure-handling.html",
+};
+
+export const transactionConsistencyItems: StaticItem[] = [
+  {
+    id: "transaction-geometry-compare",
+    kind: "command",
+    topic: "Transaction consistency",
+    prompt: "Match each model to its unit, legal sequential explanation, equivalence rule, and real-time constraint. Which comparison is precise?",
+    choices: [
+      "Serializability: transactions → an equivalent legal serial transaction history; linearizability: operations → points inside invocation-response intervals satisfying the sequential object specification; strict serializability: serializable transactions plus real-time order",
+      "Serializability: operations → points inside intervals; linearizability: transactions → any final state; strict serializability: durability plus locking",
+      "Serializability and linearizability are identical except that one is used for SQL and one for memory",
+      "Strict serializability means each transaction uses one statement, while ordinary serializability allows multiple statements",
+    ],
+    correctChoice: "Serializability: transactions → an equivalent legal serial transaction history; linearizability: operations → points inside invocation-response intervals satisfying the sequential object specification; strict serializability: serializable transactions plus real-time order",
+    answer: "Serializability maps transactions to a legal serial transaction history equivalent under the stated criterion, such as observed reads and final writes, while preserving each transaction's internal program order. Plain serializability need not preserve cross-transaction wall-clock order. Linearizability models individual operation calls against a sequential object specification and places one effect point inside every invocation-response interval, preserving process order and real-time precedence between non-overlapping calls. Strict serializability applies the serializable transaction model and also preserves real-time order between non-overlapping transactions. The unit alone is not the whole distinction; the specification, equivalence, and order constraints matter.",
+    references: [serializabilityReference, linearizabilityReference, strictSerializabilityReference],
+  },
+  {
+    id: "transaction-geometry-real-time",
+    kind: "command",
+    topic: "Transaction consistency",
+    prompt: "Register initially 0. Treat each block as a one-operation transaction. Sequential specification: write(v) makes v the latest value; read() returns the latest value. Equivalence requires the same read return and final register state; transaction-internal order is trivial. Plain serializability ignores cross-transaction wall-clock order.\n\nNon-overlapping history:\nA write(1): invoke 0, return ok 1\nB write(2): invoke 2, return ok 3\nC read(): invoke 4, return 1 at 5\n\nClassify it.",
+    choices: [
+      "Serializable, but not linearizable or strictly serializable",
+      "Linearizable and strictly serializable because every operation completed",
+      "Neither serializable nor linearizable because the read returned an old value",
+      "Linearizable but not serializable because operations are not transactions",
+    ],
+    correctChoice: "Serializable, but not linearizable or strictly serializable",
+    answer: "The serial order B write(2), A write(1), C read() explains both the returned 1 and final state 1, so this fixture is serializable. But the calls do not overlap: real time requires A before B before C. That order would make C return 2. No effect points inside the intervals can reverse A and B, so the history is not linearizable. For the same reason, the transaction history is not strictly serializable.",
+    references: [serializabilityReference, linearizabilityReference, strictSerializabilityReference],
+  },
+  {
+    id: "transaction-geometry-overlap",
+    kind: "command",
+    topic: "Transaction consistency",
+    prompt: "Register initially 0. Sequential specification: write(v) makes v the latest value and returns ok. Each caller issues one operation, so program order is trivial. Equivalence requires the same operation responses; there is no later read or observed final state.\n\nA write(1): invoke 0, return ok 4\nB write(2): invoke 1, return ok 3\n\nThe intervals overlap. Which linearization order is allowed?",
+    choices: [
+      "Either order is allowed and linearizable; the overlap creates no real-time precedence between A and B",
+      "Only A then B, because A was invoked first even though the calls overlap",
+      "Only B then A, because B returned first even though the calls overlap",
+      "Neither order, because overlapping writes can never be linearized",
+    ],
+    correctChoice: "Either order is allowed and linearizable; the overlap creates no real-time precedence between A and B",
+    answer: "Because the intervals overlap, linearizability imposes no real-time precedence between A and B. A point for each write can be placed inside its interval in either order, and both serial histories satisfy the register's sequential specification and the observed ok responses. The later abstract value would depend on the chosen order, but no later read or required final-state observation constrains it in this fixture. Invocation order alone and response order alone do not order overlapping calls.",
+    references: [linearizabilityReference],
+  },
+  {
+    id: "transaction-geometry-no-sequential-history",
+    kind: "command",
+    topic: "Transaction consistency",
+    prompt: "Register initially 0. Sequential specification: write(v) makes v the latest value; read() returns the latest value. Treat each operation as a one-operation transaction; equivalence requires the same read return and final register state.\n\nA write(1): invoke 0, return ok 1\nB read(): invoke 2, return 2 at 3\n\nClassify it.",
+    choices: [
+      "Neither serializable nor linearizable: no legal sequential history can return 2",
+      "Serializable but not linearizable because B could move before A",
+      "Linearizable but not serializable because the calls do not overlap",
+      "Both, because a read may return any value after a completed write",
+    ],
+    correctChoice: "Neither serializable nor linearizable: no legal sequential history can return 2",
+    answer: "No legal sequential register history can make the read return 2: the initial value is 0 and the only write stores 1. Reordering B before A would return 0, while A before B would return 1. Since the stated equivalence criterion cannot be met by any serial history, it is not serializable. Since no legal sequential object history exists at all, adding interval and real-time constraints cannot make it linearizable.",
+    references: [serializabilityReference, linearizabilityReference],
+  },
+  {
+    id: "transaction-geometry-strict-serializability",
+    kind: "command",
+    topic: "Transaction consistency",
+    prompt: "Database x initially 0. Transactions are atomic blocks; serial equivalence requires the same read return, final state, and each transaction's program order.\n\nT1 interval [0,2]: write x=1; COMMIT\nT2 interval [3,5]: read x → 0; COMMIT\n\nT1 commits before T2 begins. Plain serializability does not require cross-transaction real-time order. Classify the committed history.",
+    choices: [
+      "Serializable but not strictly serializable: T2 then T1 explains it, but real time requires T1 then T2",
+      "Strictly serializable because both transactions committed atomically",
+      "Neither serializable nor strictly serializable because any stale read is a dirty read",
+      "Strictly serializable but not serializable because strictness is weaker",
+    ],
+    correctChoice: "Serializable but not strictly serializable: T2 then T1 explains it, but real time requires T1 then T2",
+    answer: "The serial order T2, then T1 preserves each transaction's internal program order, gives T2 the observed read of 0, and leaves final x=1, so the history is serializable. It is not strictly serializable because T1 completed before T2 began; real-time precedence requires T1 before T2, which would make T2 read 1. Strict serializability is therefore the transaction-level bridge: serial equivalence plus non-overlapping transaction real-time order.",
+    references: [serializabilityReference, strictSerializabilityReference],
+  },
+  {
+    id: "acid-atomicity",
+    kind: "command",
+    topic: "ACID",
+    prompt: "A transfer transaction plans to debit Alice and credit Bob, but a process failure occurs after the debit and before the credit. Recovery exposes neither update. Which ACID property does this demonstrate, and what does it not demonstrate?",
+    choices: [
+      "Atomicity: all transaction effects commit or none do; this does not prove CPU atomicity or linearizability",
+      "Consistency: every application invariant is automatically discovered and enforced",
+      "Isolation: the transaction must have used Serializable isolation",
+      "Durability: every backup and replica must already contain the failed transaction",
+    ],
+    correctChoice: "Atomicity: all transaction effects commit or none do; this does not prove CPU atomicity or linearizability",
+    answer: "Atomicity makes the transaction an all-or-none unit: commit all its effects, or abort and expose none, including after recovery from a covered failure. It is not CPU instruction atomicity, and it does not supply linearizability or real-time ordering. Those are different models with different units and constraints.",
+    references: [postgresTransactionsReference, postgresGlossaryReference, transactionConceptReference],
+  },
+  {
+    id: "acid-consistency",
+    kind: "command",
+    topic: "ACID",
+    prompt: "The database enforces only balance >= 0 on each account. An application bug credits Bob without debiting Alice, so both row constraints pass but the unencoded invariant total(A,B) = constant is broken. What follows about ACID consistency?",
+    choices: [
+      "Consistency does not infer missing invariants or repair an incorrect transaction; encode/enforce the invariant or implement the transaction correctly",
+      "The database must detect every domain invariant even when it was never declared",
+      "Consistency means every replica converges instantly, so the write must be rejected",
+      "Consistency is identical to CAP consistency and therefore requires linearizable reads",
+    ],
+    correctChoice: "Consistency does not infer missing invariants or repair an incorrect transaction; encode/enforce the invariant or implement the transaction correctly",
+    answer: "ACID consistency means a correct transaction preserves the declared or application invariants that actually define valid states. PostgreSQL can automatically reject violated integrity constraints it knows about, but it cannot infer an unencoded total-balance rule or make a buggy transformation correct. This is not CAP consistency, replica convergence, or universal instant visibility. Those use different models and contracts.",
+    references: [postgresGlossaryReference, transactionConceptReference],
+  },
+  {
+    id: "acid-isolation",
+    kind: "command",
+    topic: "ACID",
+    prompt: "A PostgreSQL 18 Read Committed transaction runs two SELECT statements. Another transaction commits between them, so the second SELECT sees a newer value. Does this alone mean ACID isolation is absent?",
+    choices: [
+      "No. Isolation follows the named isolation-level contract; ACID's I does not mean every transaction always runs at Serializable",
+      "Yes. Every ACID transaction must keep one snapshot from BEGIN through COMMIT",
+      "No, because isolation only applies after a crash and has no concurrency meaning",
+      "Yes, unless both transactions run on separate replicas",
+    ],
+    correctChoice: "No. Isolation follows the named isolation-level contract; ACID's I does not mean every transaction always runs at Serializable",
+    answer: "Read Committed provides partial transaction isolation under its documented model: each statement gets a new statement snapshot, so a later SELECT may observe a concurrent commit and exhibit a nonrepeatable read. Stronger levels provide stronger guarantees. Saying a system has transactions or ACID isolation is not enough to infer Serializable behavior; name the isolation level and implementation semantics.",
+    references: [postgresIsolationReference, postgresGlossaryReference],
+  },
+  {
+    id: "acid-durability",
+    kind: "command",
+    topic: "ACID",
+    prompt: "The database acknowledges COMMIT, then the database server crashes and recovers. The committed row remains under the configured durability contract. Which property is demonstrated, and which stronger claims do not follow?",
+    choices: [
+      "Durability; it does not by itself prove availability, backups, geographic redundancy, or eternal retention",
+      "Atomicity; it proves the write happened as one CPU instruction",
+      "Isolation; it proves every concurrent execution was serializable",
+      "Consistency; it proves every application invariant was encoded",
+    ],
+    correctChoice: "Durability; it does not by itself prove availability, backups, geographic redundancy, or eternal retention",
+    answer: "Durability means an acknowledged commit survives failures covered by the database's configured durability contract, such as the documented crash case. It does not itself provide availability during failure, a backup and restore plan, geographic redundancy, protection from every storage disaster, or eternal retention. Those need separate mechanisms and contracts.",
+    references: [postgresTransactionsReference, postgresGlossaryReference],
+  },
+  {
+    id: "transaction-isolation-standard-phenomena",
+    kind: "command",
+    topic: "Transaction isolation",
+    prompt: "SQL standard model (minimum prohibited phenomena). Match each exact phenomenon to the weakest standard level that forbids it:\n1 dirty read: read another transaction's uncommitted write\n2 nonrepeatable read: reread one row after another transaction commits a change\n3 phantom read: repeat a predicate query after another transaction commits a matching row\n4 serialization anomaly: committed result matches no serial transaction order",
+    choices: [
+      "1 Read Committed; 2 Repeatable Read; 3 Serializable; 4 Serializable",
+      "1 Read Uncommitted; 2 Read Committed; 3 Repeatable Read; 4 Repeatable Read",
+      "1 Repeatable Read; 2 Serializable; 3 Serializable; 4 Read Committed",
+      "All four first become forbidden only at Serializable",
+    ],
+    correctChoice: "1 Read Committed; 2 Repeatable Read; 3 Serializable; 4 Serializable",
+    answer: "In the SQL standard model, Read Committed first forbids dirty reads; Repeatable Read also forbids nonrepeatable reads; Serializable additionally forbids phantom reads and all serialization anomalies. These are minimum protections, not a universal vendor behavior matrix: an implementation may provide stronger guarantees at a named level. PostgreSQL does so for both requested Read Uncommitted and Repeatable Read.",
+    references: [postgresIsolationReference],
+  },
+  {
+    id: "transaction-isolation-postgres-read-uncommitted",
+    kind: "command",
+    topic: "Transaction isolation",
+    prompt: "PostgreSQL 18, requested Read Uncommitted, x initially 10.\nT1: BEGIN; UPDATE x=20; -- uncommitted\nT2: SELECT x\nT1: ROLLBACK\n\nCan T2 read 20, and what standard phenomenon would that be?",
+    choices: [
+      "No. T2 cannot read 20; PostgreSQL Read Uncommitted behaves as Read Committed, and reading it would be a dirty read",
+      "Yes. Read Uncommitted always exposes every in-progress PostgreSQL row version",
+      "No. T2 must block until T1 commits, then return 20 even though T1 rolled back",
+      "Yes. It is a phantom read because x changed inside one row",
+    ],
+    correctChoice: "No. T2 cannot read 20; PostgreSQL Read Uncommitted behaves as Read Committed, and reading it would be a dirty read",
+    answer: "PostgreSQL implements only three distinct isolation behaviors: a requested Read Uncommitted transaction behaves as Read Committed. T2 cannot see T1's uncommitted 20. If it did, and T1 later rolled back, that observation would be the SQL-standard dirty-read phenomenon.",
+    references: [postgresIsolationReference],
+  },
+  {
+    id: "transaction-isolation-postgres-statement-snapshot",
+    kind: "command",
+    topic: "Transaction isolation",
+    prompt: "PostgreSQL 18 Read Committed, x initially 10.\nT1: BEGIN; SELECT x → 10\nT2: UPDATE x=11; COMMIT\nT1: SELECT x → ?; COMMIT\n\nWhat may T1's second SELECT return, and why?",
+    choices: [
+      "11: this is a nonrepeatable read because each SELECT receives a new statement snapshot",
+      "10: Read Committed fixes one transaction snapshot at BEGIN",
+      "11: this is a dirty read because T2 committed",
+      "The second SELECT must abort with SQLSTATE 40001",
+    ],
+    correctChoice: "11: this is a nonrepeatable read because each SELECT receives a new statement snapshot",
+    answer: "At PostgreSQL Read Committed, each ordinary SELECT sees data committed before that statement began. T2 commits between T1's two statements, so T1's second statement snapshot can contain x=11. Rereading the row and getting a committed changed value is a nonrepeatable read, not a dirty read.",
+    references: [postgresIsolationReference],
+  },
+  {
+    id: "transaction-isolation-postgres-transaction-snapshot",
+    kind: "command",
+    topic: "Transaction isolation",
+    prompt: "PostgreSQL 18 Repeatable Read. Initially one row matches status='open'.\nT1: BEGIN; SELECT count(*) WHERE status='open' → 1\nT2: INSERT another open row; COMMIT\nT1: repeat the same SELECT → ?; COMMIT\n\nAssume T1 only reads. What happens?",
+    choices: [
+      "It still returns 1: one transaction snapshot prevents this phantom in PostgreSQL Repeatable Read",
+      "It returns 2: the SQL standard requires every Repeatable Read implementation to allow phantoms",
+      "It sees T2's uncommitted insert before COMMIT, then returns 2",
+      "It must abort because every concurrent insert conflicts with a read-only transaction",
+    ],
+    correctChoice: "It still returns 1: one transaction snapshot prevents this phantom in PostgreSQL Repeatable Read",
+    answer: "PostgreSQL Repeatable Read fixes the snapshot at the transaction's first non-transaction-control statement, so both predicate queries see the original one-row set. This prevents phantoms in PostgreSQL and is stronger than the SQL standard's minimum Repeatable Read guarantee. It still does not eliminate every serialization anomaly.",
+    references: [postgresIsolationReference],
+  },
+  {
+    id: "transaction-isolation-postgres-lost-update",
+    kind: "command",
+    topic: "Transaction isolation",
+    prompt: "PostgreSQL 18, x=10. Both applications calculate an absolute replacement value.\nT1 Read Committed reads 10\nT2 Read Committed reads 10\nT1: UPDATE x=11; COMMIT\nT2: UPDATE x=11; COMMIT\nFinal x=11 although two logical increments ran. Name the anomaly and the weakest listed PostgreSQL level, Read Committed / Repeatable Read / Serializable, that forbids this exact schedule.",
+    choices: [
+      "Lost update; Repeatable Read, where T2's update of the row changed since its snapshot aborts",
+      "Dirty read; Read Committed forbids it because both reads returned committed data",
+      "Phantom read; Serializable is required because a new row appeared",
+      "Write skew; no PostgreSQL isolation level can detect it",
+    ],
+    correctChoice: "Lost update; Repeatable Read, where T2's update of the row changed since its snapshot aborts",
+    answer: "Both clients derive 11 from the same old 10, so the later absolute write overwrites the first logical increment: a lost update. PostgreSQL Read Committed permits this read-then-write shape. Under PostgreSQL Repeatable Read, a transaction that tries to update a row changed by a concurrent transaction since its snapshot is rolled back with a serialization failure, so Repeatable Read is the weakest listed level that forbids this exact schedule. An atomic UPDATE x=x+1 would be a different schedule.",
+    references: [postgresIsolationReference],
+  },
+  {
+    id: "transaction-isolation-postgres-write-skew",
+    kind: "command",
+    topic: "Transaction isolation",
+    prompt: "PostgreSQL 18, two rows: Alice on_call=true, Bob on_call=true. Invariant: at least one doctor is on call.\nT1 Repeatable Read: sees both on call; sets Alice off\nT2 Repeatable Read: sees both on call; sets Bob off\nThey update different rows and both commit. Final state: both off. Classify it and choose the PostgreSQL protection.",
+    choices: [
+      "Write skew, a serialization anomaly allowed by Repeatable Read snapshot isolation; Serializable detects the dependency and aborts a transaction",
+      "Lost update prevented by a row lock because both transactions write the same row",
+      "Dirty read prevented by Read Committed because both initial values were committed",
+      "Phantom read that PostgreSQL Repeatable Read must prevent by hiding both updates forever",
+    ],
+    correctChoice: "Write skew, a serialization anomaly allowed by Repeatable Read snapshot isolation; Serializable detects the dependency and aborts a transaction",
+    answer: "Each transaction reads the same snapshot, then writes a different row, so there is no same-row update conflict. PostgreSQL Repeatable Read uses snapshot isolation, and the committed result has no serial order: whichever transaction ran second would see only one doctor on call and should not turn that doctor off. This is write skew, a serialization anomaly. PostgreSQL Serializable adds SSI dependency checks and aborts a participant rather than allowing both commits.",
+    references: [postgresIsolationReference],
+  },
+  {
+    id: "transaction-isolation-postgres-serializable-retry",
+    kind: "command",
+    topic: "Transaction isolation",
+    prompt: "PostgreSQL 18 Serializable reports SQLSTATE 40001 after an SSI dependency check. The transaction first read rows, application code chose values from those reads, then issued writes. What is the correct retry boundary?",
+    choices: [
+      "Abort and retry the whole transaction, including the decision logic that chose SQL and values; more than one retry may be needed",
+      "Retry only the final COMMIT because all prior reads remain authoritative",
+      "Retry only the last UPDATE with the same value outside a transaction",
+      "Ignore 40001 because PostgreSQL Serializable already committed the transaction",
+    ],
+    correctChoice: "Abort and retry the whole transaction, including the decision logic that chose SQL and values; more than one retry may be needed",
+    answer: "SQLSTATE 40001 is a serialization failure. PostgreSQL's Serializable Snapshot Isolation, SSI, may abort a transaction to prevent a non-serializable committed result. Retry the complete transaction from the beginning, including every read and all application decision logic that determines later SQL or values. A retried attempt can fail again under contention, so success is not guaranteed after one retry.",
+    references: [postgresIsolationReference, postgresRetryReference],
+  },
+  {
+    id: "transaction-isolation-postgres-mvcc-boundary",
+    kind: "command",
+    topic: "Transaction isolation",
+    prompt: "PostgreSQL uses MVCC so statements read suitable row versions from a snapshot. Which conclusion is valid?",
+    choices: [
+      "MVCC is an implementation family, not one isolation level; snapshot timing and conflict checks determine the guarantee, and snapshot isolation is not serializability",
+      "MVCC always means one snapshot per transaction and therefore strict serializability",
+      "MVCC is the SQL-standard name for Read Committed only",
+      "MVCC prevents all anomalies because readers never block writers",
+    ],
+    correctChoice: "MVCC is an implementation family, not one isolation level; snapshot timing and conflict checks determine the guarantee, and snapshot isolation is not serializability",
+    answer: "MVCC keeps multiple row versions and lets reads use a database snapshot without ordinary read locks blocking writes. That is an implementation family, not a single isolation level. PostgreSQL Read Committed uses statement snapshots, Repeatable Read uses transaction-level snapshot isolation, and Serializable builds SSI checks on that machinery. Snapshot isolation can still allow write skew, so snapshot isolation is not serializability.",
+    references: [postgresMvccReference, postgresIsolationReference],
+  },
+  {
+    id: "transaction-isolation-standard-vs-postgres",
+    kind: "command",
+    topic: "Transaction isolation",
+    prompt: "Compare the SQL standard model's minimum isolation-level protections with PostgreSQL 18 behavior. Which compact map is accurate?",
+    choices: [
+      "Requested Read Uncommitted behaves as Read Committed; Repeatable Read prevents phantoms but may allow serialization anomalies; Serializable uses SSI to abort unsafe executions",
+      "Read Uncommitted exposes dirty rows; Repeatable Read must allow phantoms; Serializable never aborts",
+      "Read Committed uses one transaction snapshot; Repeatable Read uses a new statement snapshot; Serializable is only a lock timeout",
+      "All four standard names are identical in PostgreSQL because MVCC replaces isolation levels",
+    ],
+    correctChoice: "Requested Read Uncommitted behaves as Read Committed; Repeatable Read prevents phantoms but may allow serialization anomalies; Serializable uses SSI to abort unsafe executions",
+    answer: "The SQL standard names four levels and gives minimum prohibited phenomena. PostgreSQL 18 implements three distinct behaviors: requested Read Uncommitted maps to Read Committed; Read Committed uses a new snapshot per statement; Repeatable Read uses snapshot isolation and prevents phantoms, stronger than the standard minimum, while still permitting serialization anomalies; Serializable adds SSI monitoring and aborts transactions when needed to preserve a serial explanation. Do not export this PostgreSQL matrix as a universal vendor-independent rule.",
+    references: [postgresIsolationReference, postgresMvccReference],
+  },
+];

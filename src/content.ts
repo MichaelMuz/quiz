@@ -9,6 +9,7 @@ import { linuxBasicsItems } from "./linux-basics-content.js";
 import { linuxPermissionsContainerItems } from "./linux-permissions-container-content.js";
 import { processExitItems } from "./process-exit-content.js";
 import { sqlSupportItems } from "./sql-support-content.js";
+import { transactionConsistencyItems } from "./transaction-consistency-content.js";
 import { vpcControlPlaneItems } from "./vpc-control-plane-content.js";
 import { workloadIdentityItems } from "./workload-identity-content.js";
 
@@ -305,6 +306,7 @@ export const contentBank: StaticItem[] = [
   ...linuxBasicsItems,
   ...linuxPermissionsContainerItems,
   ...sqlSupportItems,
+  ...transactionConsistencyItems,
   ...commandExercises,
 ];
 
