@@ -77,6 +77,7 @@ describe("transaction consistency and isolation practice", () => {
     expect(realTime.prompt).toMatch(/register initially 0.*write\(1\).*write\(2\).*read\(\).*return(?:s)? 1/is);
     expect(realTime.prompt).toMatch(/non-overlap/is);
     expect(realTime.prompt).toMatch(/equivalence.*same read return.*final register state/is);
+    expect(realTime.prompt).toMatch(/observed final register state(?: is|:) 1/is);
     expect(realTime.correctChoice).toMatch(/serializable.*not linearizable/is);
     expect(realTime.answer).toMatch(/write\(2\).*write\(1\).*read.*real[- ]time/is);
 
@@ -89,6 +90,7 @@ describe("transaction consistency and isolation practice", () => {
 
     const impossible = item("transaction-geometry-no-sequential-history");
     expect(impossible.prompt).toMatch(/register initially 0.*write\(1\).*read\(\).*return(?:s)? 2/is);
+    expect(impossible.prompt).toMatch(/observed final register state(?: is|:) 1/is);
     expect(impossible.correctChoice).toMatch(/neither/is);
     expect(impossible.answer).toMatch(/no legal sequential.*read.*2/is);
 

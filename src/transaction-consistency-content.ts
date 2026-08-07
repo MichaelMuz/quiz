@@ -59,7 +59,7 @@ export const transactionConsistencyItems: StaticItem[] = [
     id: "transaction-geometry-real-time",
     kind: "command",
     topic: "Transaction consistency",
-    prompt: "Register initially 0. Treat each block as a one-operation transaction. Sequential specification: write(v) makes v the latest value; read() returns the latest value. Equivalence requires the same read return and final register state; transaction-internal order is trivial. Plain serializability ignores cross-transaction wall-clock order.\n\nNon-overlapping history:\nA write(1): invoke 0, return ok 1\nB write(2): invoke 2, return ok 3\nC read(): invoke 4, return 1 at 5\n\nClassify it.",
+    prompt: "Register initially 0. Treat each block as a one-operation transaction. Sequential specification: write(v) makes v the latest value; read() returns the latest value. Equivalence requires the same read return and final register state; transaction-internal order is trivial. Plain serializability ignores cross-transaction wall-clock order.\n\nNon-overlapping history:\nA write(1): invoke 0, return ok 1\nB write(2): invoke 2, return ok 3\nC read(): invoke 4, return 1 at 5\nObserved final register state: 1\n\nClassify it.",
     choices: [
       "Serializable, but not linearizable or strictly serializable",
       "Linearizable and strictly serializable because every operation completed",
@@ -89,7 +89,7 @@ export const transactionConsistencyItems: StaticItem[] = [
     id: "transaction-geometry-no-sequential-history",
     kind: "command",
     topic: "Transaction consistency",
-    prompt: "Register initially 0. Sequential specification: write(v) makes v the latest value; read() returns the latest value. Treat each operation as a one-operation transaction; equivalence requires the same read return and final register state.\n\nA write(1): invoke 0, return ok 1\nB read(): invoke 2, return 2 at 3\n\nClassify it.",
+    prompt: "Register initially 0. Sequential specification: write(v) makes v the latest value; read() returns the latest value. Treat each operation as a one-operation transaction; equivalence requires the same read return and final register state.\n\nA write(1): invoke 0, return ok 1\nB read(): invoke 2, return 2 at 3\nObserved final register state: 1\n\nClassify it.",
     choices: [
       "Neither serializable nor linearizable: no legal sequential history can return 2",
       "Serializable but not linearizable because B could move before A",
@@ -97,7 +97,7 @@ export const transactionConsistencyItems: StaticItem[] = [
       "Both, because a read may return any value after a completed write",
     ],
     correctChoice: "Neither serializable nor linearizable: no legal sequential history can return 2",
-    answer: "No legal sequential register history can make the read return 2: the initial value is 0 and the only write stores 1. Reordering B before A would return 0, while A before B would return 1. Since the stated equivalence criterion cannot be met by any serial history, it is not serializable. Since no legal sequential object history exists at all, adding interval and real-time constraints cannot make it linearizable.",
+    answer: "No legal sequential register history can make the read return 2: the initial value is 0 and the only write stores 1. B before A would return 0 and finish at 1; A before B would return 1 and finish at 1. Neither order matches the observed read, even though both match the observed final state. Since the stated equivalence criterion cannot be met by any serial history, it is not serializable. Since no legal sequential object history exists at all, adding interval and real-time constraints cannot make it linearizable.",
     references: [serializabilityReference, linearizabilityReference],
   },
   {
