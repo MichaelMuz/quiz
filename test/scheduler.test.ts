@@ -18,6 +18,33 @@ describe("transparent interval scheduler", () => {
     expect(ids).not.toContain("decimal-units");
   });
 
+  it("keeps each conversion direction and the IPv6 and RFC 1918 cohort independently reachable", () => {
+    const ids = new Set(Array.from({ length: 2_000 }, (_, position) =>
+      chooseStableId(position, [], new Date("2026-08-08T00:00:00.000Z"))));
+    for (const id of [
+      "base-binary-to-decimal",
+      "base-decimal-to-binary",
+      "base-decimal-to-hex",
+      "base-hex-to-decimal",
+      "base-binary-to-hex",
+      "base-hex-to-binary",
+      "base-method-place-value",
+      "base-method-repeated-division",
+      "base-method-nibble-grouping",
+      "base-method-notation-and-width",
+      "cidr-ipv6-structure-expansion",
+      "cidr-ipv6-rfc5952-canonical",
+      "cidr-ipv6-prefix-56",
+      "cidr-ipv6-subnet-arithmetic",
+      "cidr-ipv6-address-counts",
+      "cidr-ipv6-overlap-containment",
+      "cidr-ipv6-longest-prefix-route",
+      "cidr-rfc1918-exact-ranges",
+      "cidr-rfc1918-containment",
+      "cidr-rfc1918-security-boundary",
+    ]) expect(ids).toContain(id);
+  });
+
   it("surfaces every Bash redirection card through the normal mixed queue", () => {
     const ids = new Set(Array.from({ length: 500 }, (_, position) => chooseStableId(position, [], new Date())));
     for (const id of [

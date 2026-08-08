@@ -1,4 +1,10 @@
 import { bashExpansionItems } from "./bash-expansion-content.js";
+import {
+  baseConversionDefinitions,
+  baseConversionGenerators,
+  baseConversionGraders,
+  baseConversionMethodItems,
+} from "./base-conversion-content.js";
 import { cidrItems } from "./cidr-content.js";
 import { commandExercises } from "./command-content.js";
 import { doomUnixTransferItems } from "./doom-unix-transfer-content.js";
@@ -307,6 +313,7 @@ export const contentBank: StaticItem[] = [
   ...linuxPermissionsContainerItems,
   ...sqlSupportItems,
   ...transactionConsistencyItems,
+  ...baseConversionMethodItems,
   ...commandExercises,
 ];
 
@@ -318,6 +325,7 @@ export const generatedDefinitions: GeneratedDefinition[] = [
   { id: "binary-amount-exponent", generator: "binary-amount-exponent", grader: "integer" },
   { id: "binary-exponent-prefix", generator: "binary-exponent-prefix", grader: "iec-prefix" },
   { id: "cidr-ipv4-address-count", generator: "cidr-ipv4-address-count", grader: "integer", active: true },
+  ...baseConversionDefinitions,
 ];
 
 export const activeGeneratedDefinitions = generatedDefinitions.filter((definition) => definition.active !== false);
@@ -351,6 +359,7 @@ const generators: Record<string, (seed: number) => Omit<GeneratedQuestion, "stab
       ? { seed, prompt: `${a} × ${b} = ?`, expectedAnswer: String(a * b) }
       : { seed, prompt: `${a + b} − ${b} = ?`, expectedAnswer: String(a) };
   },
+  ...baseConversionGenerators,
   "cidr-ipv4-address-count"(seed) {
     const next = random(seed);
     const prefix = cidrPrefixes[Math.floor(next() * cidrPrefixes.length)]!;
@@ -397,6 +406,7 @@ const generators: Record<string, (seed: number) => Omit<GeneratedQuestion, "stab
 
 const graders: Record<string, (response: string, expected: string) => boolean> = {
   integer: (response, expected) => /^[-+]?\d+$/.test(response.trim()) && BigInt(response.trim()) === BigInt(expected),
+  ...baseConversionGraders,
   "iec-prefix": (response, expected) => {
     const normalize = (value: string) => value.trim().toLowerCase().replace(/ib$/, "b");
     return normalize(response) === normalize(expected);

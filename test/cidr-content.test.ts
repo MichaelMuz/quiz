@@ -76,8 +76,18 @@ describe("CIDR mechanics", () => {
       "cidr-ipv4-overlap-containment",
       "cidr-ipv4-longest-prefix-route",
       "cidr-ipv6-prefix-contrast",
+      "cidr-ipv6-structure-expansion",
+      "cidr-ipv6-rfc5952-canonical",
+      "cidr-ipv6-prefix-56",
+      "cidr-ipv6-subnet-arithmetic",
+      "cidr-ipv6-address-counts",
+      "cidr-ipv6-overlap-containment",
+      "cidr-ipv6-longest-prefix-route",
+      "cidr-rfc1918-exact-ranges",
+      "cidr-rfc1918-containment",
+      "cidr-rfc1918-security-boundary",
     ]);
-    expect(ids.length + generatedDefinitions.filter(({ id }) => id.startsWith("cidr-")).length).toBe(9);
+    expect(ids.length + generatedDefinitions.filter(({ id }) => id.startsWith("cidr-")).length).toBe(19);
 
     expect(item("cidr-ipv4-overlap-containment").correctChoice).toMatch(
       /10\.0\.12\.0\/22.*contained.*10\.0\.8\.0\/21.*10\.0\.16\.0\/20.*does not overlap/is,
@@ -88,6 +98,20 @@ describe("CIDR mechanics", () => {
     expect(item("cidr-ipv6-prefix-contrast").answer).toMatch(
       /128 bits.*\/64.*64 fixed.*2\^64.*no broadcast.*same prefix/is,
     );
+    expect(item("cidr-ipv6-structure-expansion").correctChoice).toBe(
+      "2001:0db8:0000:0001:0000:0000:0000:00ab",
+    );
+    expect(item("cidr-ipv6-rfc5952-canonical").answer).toMatch(
+      /leading zeroes.*longest run.*leftmost.*single zero.*lowercase/is,
+    );
+    expect(item("cidr-ipv6-prefix-56").correctChoice).toMatch(/2001:db8:12ab:cd00::\/56/);
+    expect(item("cidr-ipv6-subnet-arithmetic").answer).toMatch(/\/48.*\/56.*2\^8.*\/64.*2\^8.*2\^16/is);
+    expect(item("cidr-ipv6-address-counts").answer).toMatch(/\/48.*2\^80.*\/56.*2\^72.*\/64.*2\^64.*\/128.*one/is);
+    expect(item("cidr-ipv6-overlap-containment").correctChoice).toMatch(/\/64.*contained.*\/56.*contained.*\/48/is);
+    expect(item("cidr-ipv6-longest-prefix-route").correctChoice).toMatch(/\/64.*target D.*longest/is);
+    expect(item("cidr-rfc1918-exact-ranges").answer).toMatch(/10\.0\.0\.0\/8.*172\.16\.0\.0\/12.*192\.168\.0\.0\/16.*not.*172\.0\.0\.0\/8/is);
+    expect(item("cidr-rfc1918-containment").correctChoice).toMatch(/172\.20\.0\.0\/16.*contained.*172\.16\.0\.0\/12.*172\.32\.0\.0\/16.*outside/is);
+    expect(item("cidr-rfc1918-security-boundary").answer).toMatch(/not.*authentication.*not.*security.*firewall.*policy/is);
 
     const reachableStatic = new Set(Array.from({ length: contentBank.length }, (_, index) =>
       chooseStableId((index * 2) + 1, [], new Date("2026-08-04T00:00:00.000Z"))));
@@ -98,7 +122,7 @@ describe("CIDR mechanics", () => {
       expect(candidate.choices).toContain(candidate.correctChoice);
       expect(candidate.references?.length).toBeGreaterThan(0);
       expect(candidate.references?.every(({ label, url }) =>
-        label.includes("accessed 2026-08-04") && url.startsWith("https://www.rfc-editor.org/"),
+        /accessed 2026-08-0[48]/.test(label) && url.startsWith("https://www.rfc-editor.org/"),
       )).toBe(true);
     }
   });

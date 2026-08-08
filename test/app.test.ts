@@ -68,6 +68,45 @@ describe("Quiz HTTP app", () => {
     expect(store.attemptCount()).toBe(1);
   });
 
+  it("persists a base-conversion prompt, renders a mobile text input, and rejects replay", async () => {
+    const stableId = "base-decimal-to-hex";
+    store.recordAttempt({
+      submissionId: "due-base-conversion",
+      stableId,
+      seed: 9,
+      prompt: "old prompt",
+      expectedAnswer: "old answer",
+      response: "wrong",
+      correct: false,
+      rating: "again",
+      reviewedAt: "2026-01-01T00:00:00.000Z",
+    });
+
+    const page = await (await fetch(`${base}/practice`)).text();
+    expect(page).toContain(`name="questionId" value="${stableId}"`);
+    expect(page).toContain('<input name="response" type="text" inputmode="text"');
+    const pending = store.getPending(stableId);
+    expect(pending).toEqual(generateQuestion(stableId, 1234));
+    expect(await (await fetch(`${base}/practice`)).text()).toContain(pending!.prompt);
+
+    const submissionId = page.match(/name="submissionId" value="([^"]+)"/)?.[1];
+    expect(submissionId).toBeTruthy();
+    const request = () => fetch(`${base}/practice`, {
+      method: "POST",
+      redirect: "manual",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        questionId: stableId,
+        submissionId: submissionId!,
+        response: `0x${pending!.expectedAnswer.toUpperCase()}`,
+      }),
+    });
+    const response = await request();
+    expect(response.headers.get("location")).toContain("result=correct");
+    expect((await request()).status).toBe(303);
+    expect(store.attemptCount()).toBe(2);
+  });
+
   it("shows the expected answer after an incorrect generated submission while advancing", async () => {
     const page = await (await fetch(`${base}/practice`)).text();
     const id = page.match(/name="questionId" value="([^"]+)/)?.[1];
