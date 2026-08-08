@@ -18,7 +18,7 @@ describe("transparent interval scheduler", () => {
     expect(ids).not.toContain("decimal-units");
   });
 
-  it("keeps each conversion direction and the IPv6 and RFC 1918 cohort independently reachable", () => {
+  it("keeps each conversion direction, IPv6 card, and the single RFC 1918 card independently reachable", () => {
     const ids = new Set(Array.from({ length: 2_000 }, (_, position) =>
       chooseStableId(position, [], new Date("2026-08-08T00:00:00.000Z"))));
     for (const id of [
@@ -40,9 +40,11 @@ describe("transparent interval scheduler", () => {
       "cidr-ipv6-overlap-containment",
       "cidr-ipv6-longest-prefix-route",
       "cidr-rfc1918-exact-ranges",
-      "cidr-rfc1918-containment",
-      "cidr-rfc1918-security-boundary",
     ]) expect(ids).toContain(id);
+
+    expect([...ids].filter((id) => id.startsWith("cidr-rfc1918-"))).toEqual([
+      "cidr-rfc1918-exact-ranges",
+    ]);
   });
 
   it("surfaces every Bash redirection card through the normal mixed queue", () => {

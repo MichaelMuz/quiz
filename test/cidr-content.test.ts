@@ -84,10 +84,8 @@ describe("CIDR mechanics", () => {
       "cidr-ipv6-overlap-containment",
       "cidr-ipv6-longest-prefix-route",
       "cidr-rfc1918-exact-ranges",
-      "cidr-rfc1918-containment",
-      "cidr-rfc1918-security-boundary",
     ]);
-    expect(ids.length + generatedDefinitions.filter(({ id }) => id.startsWith("cidr-")).length).toBe(19);
+    expect(ids.length + generatedDefinitions.filter(({ id }) => id.startsWith("cidr-")).length).toBe(17);
 
     expect(item("cidr-ipv4-overlap-containment").correctChoice).toMatch(
       /10\.0\.12\.0\/22.*contained.*10\.0\.8\.0\/21.*10\.0\.16\.0\/20.*does not overlap/is,
@@ -109,10 +107,6 @@ describe("CIDR mechanics", () => {
     expect(item("cidr-ipv6-address-counts").answer).toMatch(/\/48.*2\^80.*\/56.*2\^72.*\/64.*2\^64.*\/128.*one/is);
     expect(item("cidr-ipv6-overlap-containment").correctChoice).toMatch(/\/64.*contained.*\/56.*contained.*\/48/is);
     expect(item("cidr-ipv6-longest-prefix-route").correctChoice).toMatch(/\/64.*target D.*longest/is);
-    expect(item("cidr-rfc1918-exact-ranges").answer).toMatch(/10\.0\.0\.0\/8.*172\.16\.0\.0\/12.*192\.168\.0\.0\/16.*not.*172\.0\.0\.0\/8/is);
-    expect(item("cidr-rfc1918-containment").correctChoice).toMatch(/172\.20\.0\.0\/16.*contained.*172\.16\.0\.0\/12.*172\.32\.0\.0\/16.*outside/is);
-    expect(item("cidr-rfc1918-security-boundary").answer).toMatch(/not.*authentication.*not.*security.*firewall.*policy/is);
-
     const reachableStatic = new Set(Array.from({ length: contentBank.length }, (_, index) =>
       chooseStableId((index * 2) + 1, [], new Date("2026-08-04T00:00:00.000Z"))));
     expect(ids.every((id) => reachableStatic.has(id))).toBe(true);
@@ -125,5 +119,20 @@ describe("CIDR mechanics", () => {
         /accessed 2026-08-0[48]/.test(label) && url.startsWith("https://www.rfc-editor.org/"),
       )).toBe(true);
     }
+  });
+
+  it("uses over-broad 172/8 and 192/8 distractors on the RFC 1918 recall card", () => {
+    const rfc1918 = item("cidr-rfc1918-exact-ranges");
+    expect(rfc1918.choices).toEqual(expect.arrayContaining([
+      expect.stringMatching(/172\.0\.0\.0\/8/),
+      expect.stringMatching(/192\.0\.0\.0\/8/),
+    ]));
+  });
+
+  it("explains both routing scope and the trust boundary on the RFC 1918 recall card", () => {
+    const answer = item("cidr-rfc1918-exact-ranges").answer;
+    expect(answer).toMatch(/10\.0\.0\.0\/8.*172\.16\.0\.0\/12.*192\.168\.0\.0\/16/is);
+    expect(answer).toMatch(/private-use.*not globally routed.*ordinary public destinations/is);
+    expect(answer).toMatch(/private source.*not.*proof of trust/is);
   });
 });
