@@ -56,6 +56,14 @@ const reflogReference = {
   label: "Git 2.47.3 git-reflog documentation, accessed 2026-07-27",
   url: "https://git-scm.com/docs/git-reflog",
 };
+const gitReviewDiffReference = {
+  label: "Git 2.47.3 git-diff documentation, accessed 2026-08-18",
+  url: "https://git-scm.com/docs/git-diff",
+};
+const doomMagitReviewReference = {
+  label: "Michael's Doom config at 2e39988, accessed 2026-08-18",
+  url: "https://gitlab.com/michael-muzafarov/doom_emacs_config/-/blob/2e39988e38c82a76e7a034c9cb93ee4fe287f29c/config.org",
+};
 
 export const gitInvestigationItems: StaticItem[] = [
   {
@@ -237,5 +245,49 @@ export const gitInvestigationItems: StaticItem[] = [
     correctChoice: "This clone recorded two recent HEAD movements; reflog entries are local and may expire, so this is not shared repository history",
     answer: "A reflog is a local journal of ref movement, useful for finding prior values after local operations. Entries may expire under retention rules. The journal is not shared with other clones or remotes, and it is not commit history: reachable commits can appear there, while an old reflog entry can also be the temporary lead to an otherwise unreachable commit.",
     references: [reflogReference],
+  },
+  {
+    id: "git-review-terminal-merge-base-progression",
+    kind: "command",
+    topic: "Git review workflow",
+    prompt: "BASE names the fetched PR base ref. Which widening terminal progression reviews committed branch changes, then committed plus staged changes, then committed, staged, and unstaged tracked changes?\n\ngit diff --merge-base BASE HEAD\ngit diff --cached --merge-base BASE\ngit diff --merge-base BASE",
+    choices: [
+      "Committed branch changes; committed plus staged changes; committed, staged, and unstaged tracked changes",
+      "Unstaged changes; staged changes; committed branch changes",
+      "The base branch's commits; both branches' symmetric difference; untracked files only",
+      "All three commands show the same endpoint trees and include untracked files",
+    ],
+    correctChoice: "Committed branch changes; committed plus staged changes; committed, staged, and unstaged tracked changes",
+    answer: "With BASE fetched, `git diff --merge-base BASE HEAD` compares the merge base of BASE and HEAD with HEAD, so it shows committed branch changes. Its patch is byte-for-byte equivalent to `git diff BASE...HEAD`. `git diff --cached --merge-base BASE` compares that merge base with the index, adding staged changes. `git diff --merge-base BASE` compares it with the working tree, adding unstaged tracked changes. A completely untracked file remains absent from all three views until it is staged or marked intent-to-add. Reverse changes made only on BASE after the histories diverged are also excluded.",
+    references: [gitReviewDiffReference],
+  },
+  {
+    id: "git-review-doom-magit-merge-base-progression",
+    kind: "command",
+    topic: "Doom Magit review workflow",
+    prompt: "In Michael's Doom Magit diff transient at config commit 2e39988, what does this widening review progression show?\n\nd origin/main...HEAD\nd -m -c origin/main\nd -m origin/main",
+    choices: [
+      "Committed branch changes; committed plus staged changes; committed, staged, and unstaged tracked changes",
+      "Unstaged changes; committed branch changes; the symmetric difference of both histories",
+      "The remote branch only; local commits only; completely untracked files only",
+      "All three forms compare origin/main directly with HEAD and therefore include reverse upstream changes",
+    ],
+    correctChoice: "Committed branch changes; committed plus staged changes; committed, staged, and unstaged tracked changes",
+    answer: "This config maps `-m` to `--merge-base`, `-c` to `--cached`, and moves Magit's existing color-moved option to `=m`. The first form uses `origin/main...HEAD` because Magit's range reader passes one range argument; Git rejects combining `--merge-base` with a range expression. The latter forms pass the fetched base ref with `--merge-base`, and `--cached` selects the index endpoint for the middle view. All three therefore exclude changes made only on origin/main after the histories diverged while widening from HEAD to the index to the working tree.",
+    references: [doomMagitReviewReference, gitReviewDiffReference],
+  },
+  {
+    id: "git-review-snapshot-layer-order",
+    kind: "ordering",
+    topic: "Git review workflow",
+    prompt: "Order the snapshots from the common ancestor through every tracked local edit included by the widening merge-base review progression.",
+    orderedItems: [
+      "merge base of BASE and HEAD",
+      "HEAD (committed branch tip)",
+      "index (committed plus staged changes)",
+      "working tree (committed, staged, and unstaged tracked changes)",
+    ],
+    answer: "The widening model is merge base → HEAD → index → working tree. A commit advances HEAD. Staging changes the index, not HEAD. Editing a tracked path without staging changes the working tree beyond the index. A completely untracked file is absent from ordinary Git diff output until staged or marked intent-to-add.",
+    references: [gitReviewDiffReference],
   },
 ];
