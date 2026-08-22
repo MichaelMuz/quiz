@@ -24,10 +24,11 @@ describe("GitHub CLI pull-request investigation", () => {
     expect(globalSearch).toBeDefined();
     expect(repoList).toBeDefined();
     expect(globalSearch!.topic).toBe("GitHub CLI investigation");
-    expect(globalSearch!.prompt).toContain("gh search prs");
+    expect(globalSearch!.prompt).toMatch(/up to 100 open pull requests/i);
     expect(globalSearch!.correctChoice).toContain("--review-requested=@me");
     expect(globalSearch!.correctChoice).toContain("--state=open");
-    expect(globalSearch!.answer).toMatch(/across.*repositories.*access.*gh pr list.*one repository/is);
+    expect(globalSearch!.correctChoice).toContain("--limit 100");
+    expect(globalSearch!.answer).toMatch(/across.*repositories.*access.*bounded.*not proof.*every.*gh pr list.*one repository/is);
     expect(repoList!.prompt).toContain("gh pr list");
     expect(repoList!.correctChoice).toContain("--repo cli/cli");
     expect(repoList!.correctChoice).toContain("--search \"$SHA\"");
@@ -38,6 +39,8 @@ describe("GitHub CLI pull-request investigation", () => {
     expect(searchHelp).toMatch(/gh search prs \[<query>\] \[flags\]/);
     expect(searchHelp).toContain("--review-requested user");
     expect(searchHelp).toContain("--state string");
+    expect(searchHelp).toContain("--limit int");
+    expect(searchHelp).toContain("Maximum number of results to fetch (default 30)");
     expect(searchHelp).toContain("--json fields");
     const listHelp = ghHelp("pr", "list");
     expect(listHelp).toMatch(/gh pr list \[flags\]/);
