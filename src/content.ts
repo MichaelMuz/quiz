@@ -9,6 +9,7 @@ import { cidrItems } from "./cidr-content.js";
 import { commandExercises } from "./command-content.js";
 import { cronItems } from "./cron-content.js";
 import { doomUnixTransferItems } from "./doom-unix-transfer-content.js";
+import { githubCliInvestigationItems } from "./github-cli-investigation-content.js";
 import { gitInvestigationItems } from "./git-investigation-content.js";
 import { iamControlPlaneItems } from "./iam-control-plane-content.js";
 import { iamPolicyInvestigationItems } from "./iam-policy-investigation-content.js";
@@ -306,6 +307,7 @@ export const contentBank: StaticItem[] = [
   ...cidrItems,
   ...cronItems,
   ...doomUnixTransferItems,
+  ...githubCliInvestigationItems,
   ...gitInvestigationItems,
   ...iamControlPlaneItems,
   ...iamPolicyInvestigationItems,
