@@ -143,7 +143,7 @@ describe("read-only Git repository investigation", () => {
       expect(repo.git(["log", "--format=%s", "--", "app.txt"])).toBe(
         "add needle\nrename mode value\nbase\n",
       );
-      expect(repo.git(["show", "HEAD", "--", "app.txt"])).toBe("");
+      expect(repo.git(["show", "--format=", "HEAD", "--", "app.txt"])).toBe("");
       expect(repo.git(["log", "--oneline", "--all"])).toContain("docs only");
       expect(repo.git(["diff", "--", "app.txt"])).toBe("");
       expect(repo.git(["log", "--format=%s", "-S", "mode=", "base..HEAD", "--", "app.txt"])).toBe("");
