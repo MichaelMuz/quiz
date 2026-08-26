@@ -92,4 +92,18 @@ describe("physical-to-HTTP latency estimation", () => {
       chooseStableId(index * 2, [], new Date("2026-08-26T00:00:00.000Z"))));
     expect(scheduled).toContain(definition!.id);
   });
+
+  it("includes both exact ten-percent boundaries for every generated target", () => {
+    for (const seed of [0, 1, 2, 3]) {
+      const question = generateQuestion("latency-fiber-floor-estimate", seed);
+      const target = Number(question.expectedAnswer);
+      const lowerBoundary = (target * 0.9).toFixed(1);
+      const upperBoundary = (target * 1.1).toFixed(1);
+
+      expect(gradeAnswer(question.grader, lowerBoundary, question.expectedAnswer), `${target} ms lower boundary`).toBe(true);
+      expect(gradeAnswer(question.grader, upperBoundary, question.expectedAnswer), `${target} ms upper boundary`).toBe(true);
+      expect(gradeAnswer(question.grader, String(Number(lowerBoundary) - 0.01), question.expectedAnswer)).toBe(false);
+      expect(gradeAnswer(question.grader, String(Number(upperBoundary) + 0.01), question.expectedAnswer)).toBe(false);
+    }
+  });
 });

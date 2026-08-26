@@ -32,7 +32,10 @@ export const latencyGraders: Record<string, (response: string, expected: string)
     const value = response.trim();
     if (!/^[-+]?(?:\d+\.?\d*|\.\d+)$/.test(value)) return false;
     const target = Number(expected);
-    return Math.abs(Number(value) - target) <= target * 0.1;
+    const answer = Number(value);
+    const tolerance = Math.abs(target) * 0.1;
+    const floatingPointSlack = Number.EPSILON * Math.max(1, Math.abs(answer), Math.abs(target));
+    return Math.abs(answer - target) <= tolerance + floatingPointSlack;
   },
 };
 
