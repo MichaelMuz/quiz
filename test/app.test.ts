@@ -128,6 +128,66 @@ describe("Quiz HTTP app", () => {
     expect(reviewPage).toContain("Question 2 of 8");
   });
 
+  it("replays the generated latency derivation rather than only its numeric target", async () => {
+    const stableId = "latency-fiber-floor-estimate";
+    store.recordAttempt({
+      submissionId: "due-latency-estimate",
+      stableId,
+      seed: 2,
+      prompt: "old prompt",
+      expectedAnswer: "old answer",
+      response: "wrong",
+      correct: false,
+      rating: "again",
+      reviewedAt: "2026-01-01T00:00:00.000Z",
+    });
+
+    const page = await (await fetch(`${base}/practice`)).text();
+    expect(page).toContain(`name="questionId" value="${stableId}"`);
+    const pending = store.getPending(stableId)!;
+    expect(pending.feedback).toMatch(/propagation floor/);
+    const submissionId = page.match(/name="submissionId" value="([^"]+)"/)?.[1];
+    expect(submissionId).toBeTruthy();
+
+    const result = await fetch(`${base}/practice`, {
+      method: "POST",
+      redirect: "manual",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        questionId: stableId,
+        submissionId: submissionId!,
+        response: pending.expectedAnswer,
+      }),
+    });
+    expect(result.status).toBe(303);
+
+    const reviewPage = await (await fetch(`${base}${result.headers.get("location")}`)).text();
+    expect(reviewPage).toContain(pending.feedback!);
+    expect(store.attemptBySubmission(submissionId!)?.expectedAnswer).toBe(pending.feedback);
+  });
+
+  it("keeps cited sources reachable from a multiple-choice latency card", async () => {
+    const item = contentBank.find(({ id }) => id === "latency-tls12-quic-comparison")!;
+    store.recordAttempt({
+      submissionId: "due-latency-sources",
+      stableId: item.id,
+      seed: null,
+      prompt: item.prompt,
+      expectedAnswer: item.answer,
+      response: item.choices![1]!,
+      correct: false,
+      rating: "again",
+      reviewedAt: "2026-01-01T00:00:00.000Z",
+    });
+
+    const page = await (await fetch(`${base}/practice`)).text();
+    expect(page).toContain(`name="questionId" value="${item.id}"`);
+    for (const reference of item.references!) {
+      expect(page).toContain(`href="${reference.url}"`);
+      expect(page).toContain(reference.label);
+    }
+  });
+
   it("keeps DNF5 query-format identifiers intact in prompts, choices, and feedback", async () => {
     const item = contentBank.find(({ id }) => id === "linux-dnf-installed-available-provenance")!;
     store.recordAttempt({

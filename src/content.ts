@@ -13,6 +13,12 @@ import { githubCliInvestigationItems } from "./github-cli-investigation-content.
 import { gitInvestigationItems } from "./git-investigation-content.js";
 import { iamControlPlaneItems } from "./iam-control-plane-content.js";
 import { iamPolicyInvestigationItems } from "./iam-policy-investigation-content.js";
+import {
+  latencyGeneratedDefinitions,
+  latencyGenerators,
+  latencyGraders,
+  latencyItems,
+} from "./latency-content.js";
 import { linuxBasicsItems } from "./linux-basics-content.js";
 import { linuxPermissionsContainerItems } from "./linux-permissions-container-content.js";
 import { processExitItems } from "./process-exit-content.js";
@@ -311,6 +317,7 @@ export const contentBank: StaticItem[] = [
   ...gitInvestigationItems,
   ...iamControlPlaneItems,
   ...iamPolicyInvestigationItems,
+  ...latencyItems,
   ...workloadIdentityItems,
   ...vpcControlPlaneItems,
   ...linuxBasicsItems,
@@ -330,6 +337,7 @@ export const generatedDefinitions: GeneratedDefinition[] = [
   { id: "binary-exponent-prefix", generator: "binary-exponent-prefix", grader: "iec-prefix" },
   { id: "cidr-ipv4-address-count", generator: "cidr-ipv4-address-count", grader: "integer", active: true },
   ...baseConversionDefinitions,
+  ...latencyGeneratedDefinitions,
 ];
 
 export const activeGeneratedDefinitions = generatedDefinitions.filter((definition) => definition.active !== false);
@@ -364,6 +372,7 @@ const generators: Record<string, (seed: number) => Omit<GeneratedQuestion, "stab
       : { seed, prompt: `${a + b} − ${b} = ?`, expectedAnswer: String(a) };
   },
   ...baseConversionGenerators,
+  ...latencyGenerators,
   "cidr-ipv4-address-count"(seed) {
     const next = random(seed);
     const prefix = cidrPrefixes[Math.floor(next() * cidrPrefixes.length)]!;
@@ -411,6 +420,7 @@ const generators: Record<string, (seed: number) => Omit<GeneratedQuestion, "stab
 const graders: Record<string, (response: string, expected: string) => boolean> = {
   integer: (response, expected) => /^[-+]?\d+$/.test(response.trim()) && BigInt(response.trim()) === BigInt(expected),
   ...baseConversionGraders,
+  ...latencyGraders,
   "iec-prefix": (response, expected) => {
     const normalize = (value: string) => value.trim().toLowerCase().replace(/ib$/, "b");
     return normalize(response) === normalize(expected);

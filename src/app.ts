@@ -78,7 +78,7 @@ function renderStatic(item: StaticItem, position: number, result: string | null,
     const choices = item.choices.map((choice) =>
       `<button class="choice command-choice" name="response" value="${escape(choice)}">${renderText(choice)}</button>`).join("");
     return pageChrome(position, `<section class="card">${heading}<form class="choices" method="post" action="/practice">
-      <input type="hidden" name="questionId" value="${escape(item.id)}"><input type="hidden" name="submissionId" value="${submissionId}"><input type="hidden" name="contentVersion" value="${contentVersion(item)}">${choices}</form></section>`, result, expectedAnswer, reviewedStableId);
+      <input type="hidden" name="questionId" value="${escape(item.id)}"><input type="hidden" name="submissionId" value="${submissionId}"><input type="hidden" name="contentVersion" value="${contentVersion(item)}">${choices}</form>${references(item)}</section>`, result, expectedAnswer, reviewedStableId);
   }
   const choices = item.choices ? `<div class="choices">${item.choices.map((choice) => `<button class="choice" type="button" onclick="this.closest('.card').querySelector('details').open=true">${escape(choice)}</button>`).join("")}</div>` : "";
   return pageChrome(position, `<section class="card">${heading}${choices}
@@ -222,7 +222,8 @@ export function createQuizServer(store: QuizStore, options: AppOptions = {}) {
           const userResponse = form.get("response") ?? "";
           correct = gradeAnswer(pending.grader, userResponse, pending.expectedAnswer);
           store.recordAttempt({ submissionId, stableId: questionId, seed: pending.seed, prompt: pending.prompt,
-            expectedAnswer: pending.expectedAnswer, response: userResponse, correct, rating: correct ? "good" : "again", reviewedAt });
+            expectedAnswer: pending.feedback ?? pending.expectedAnswer,
+            response: userResponse, correct, rating: correct ? "good" : "again", reviewedAt });
         } else if (item!.kind === "ordering") {
           const ordering = item as OrderingItem;
           const pending = store.getPending(questionId);
