@@ -2,20 +2,25 @@ import type { GeneratedDefinition, GeneratedQuestion, StaticItem } from "./conte
 
 type ReliabilityGenerator = (seed: number) => Omit<GeneratedQuestion, "stableId" | "grader">;
 
-const minutesPerCommonYear = 365 * 24 * 60;
-const availabilityLevels = [99, 99.9, 99.99, 99.999] as const;
-const ninesNames = ["two nines", "three nines", "four nines", "five nines"] as const;
+const availabilityCases = [
+  { availability: "90", downtime: "36.5", unit: "days", period: "365", nines: "one nine" },
+  { availability: "99", downtime: "87.6", unit: "hours", period: "8,760", nines: "two nines" },
+  { availability: "99.9", downtime: "8.76", unit: "hours", period: "8,760", nines: "three nines" },
+  { availability: "99.99", downtime: "52.56", unit: "minutes", period: "525,600", nines: "four nines" },
+  { availability: "99.999", downtime: "5.256", unit: "minutes", period: "525,600", nines: "five nines" },
+  { availability: "99.9999", downtime: "31.536", unit: "seconds", period: "31,536,000", nines: "six nines" },
+] as const;
 
 export const reliabilityGeneratedDefinitions: GeneratedDefinition[] = [
   { id: "reliability-year-hours", generator: "reliability-year-hours", grader: "reliability-number", active: true },
   { id: "reliability-year-minutes", generator: "reliability-year-minutes", grader: "reliability-number", active: true },
   { id: "reliability-year-seconds", generator: "reliability-year-seconds", grader: "reliability-number", active: true },
   { id: "reliability-availability-to-downtime", generator: "reliability-availability-to-downtime", grader: "reliability-number", active: true },
-  { id: "reliability-downtime-to-availability", generator: "reliability-downtime-to-availability", grader: "reliability-number", active: true },
+  { id: "reliability-downtime-to-availability", generator: "reliability-downtime-to-availability", grader: "integer", active: true },
 ];
 
 function indexFor(seed: number): number {
-  return Math.abs(seed) % availabilityLevels.length;
+  return Math.abs(seed) % availabilityCases.length;
 }
 
 export const reliabilityGenerators: Record<string, ReliabilityGenerator> = {
@@ -45,33 +50,36 @@ export const reliabilityGenerators: Record<string, ReliabilityGenerator> = {
   },
   "reliability-availability-to-downtime"(seed) {
     const index = indexFor(seed);
-    const availability = availabilityLevels[index]!;
-    const downtimeMinutes = minutesPerCommonYear * (1 - availability / 100);
-    const expectedAnswer = String(Number(downtimeMinutes.toFixed(6)));
+    const current = availabilityCases[index]!;
     return {
       seed,
-      prompt: `Estimate first, then calculate: ${availability}% availability over a common non-leap year of 365 days allows how many minutes of downtime?`,
-      expectedAnswer,
-      feedback: `(1 − ${(availability / 100).toFixed(index + 2)}) × 525,600 = ${expectedAnswer} minutes. The result is a time-based downtime budget for this stated one-year accounting window.`,
+      prompt: `Estimate first, then calculate: ${current.availability}% availability over a common non-leap year of 365 days allows how many ${current.unit} of downtime? Answers within ±0.5% are accepted.`,
+      expectedAnswer: current.downtime,
+      feedback: `(1 − ${Number(current.availability) / 100}) × ${current.period} = ${current.downtime} ${current.unit}. The result is a time-based downtime budget for this stated one-year accounting window; leap years and provider-defined monthly SLA windows change the exact value.`,
     };
   },
   "reliability-downtime-to-availability"(seed) {
     const index = indexFor(seed);
-    const availability = availabilityLevels[index]!;
-    const downtimeMinutes = Number((minutesPerCommonYear * (1 - availability / 100)).toFixed(6));
+    const current = availabilityCases[index]!;
     return {
       seed,
-      prompt: `Estimate first, then calculate: ${downtimeMinutes} minutes of downtime in a common non-leap year of 365 days equals what availability percentage?`,
-      expectedAnswer: String(availability),
-      feedback: `(1 − ${downtimeMinutes} ÷ 525,600) × 100 = ${availability}%, commonly called ${ninesNames[index]}. The label only has meaning with the accounting window and measurement rule stated.`,
+      prompt: `Estimate first: ${current.downtime} ${current.unit} of downtime in a common non-leap year of 365 days is approximately how many consecutive nines of availability? Enter the number of nines.`,
+      expectedAnswer: String(index + 1),
+      feedback: `(1 − ${current.downtime} ÷ ${current.period}) × 100 = ${current.availability}%, commonly called ${current.nines}. The label only has meaning with the accounting window and measurement rule stated.`,
     };
   },
 };
 
 export const reliabilityGraders: Record<string, (response: string, expected: string) => boolean> = {
   "reliability-number": (response, expected) => {
-    const value = response.trim().replaceAll(",", "");
-    return /^[-+]?(?:\d+\.?\d*|\.\d+)$/.test(value) && Number(value) === Number(expected);
+    const value = response.trim();
+    if (!/^[-+]?(?:(?:\d+|\d{1,3}(?:,\d{3})+)(?:\.\d*)?|\.\d+)$/.test(value)) return false;
+    const answer = Number(value.replaceAll(",", ""));
+    const target = Number(expected);
+    if (!expected.includes(".")) return answer === target;
+    const tolerance = Math.abs(target) * 0.005;
+    const floatingPointSlack = Number.EPSILON * Math.max(1, Math.abs(answer), Math.abs(target));
+    return Math.abs(answer - target) <= tolerance + floatingPointSlack;
   },
 };
 
@@ -86,7 +94,7 @@ export const reliabilityItems: StaticItem[] = [
     id: "reliability-extra-nine",
     kind: "flashcard",
     topic: "Reliability",
-    prompt: "What does one additional nine do to allowed downtime over the same accounting window and time-based availability definition?",
+    prompt: "What does one additional nine do to allowed downtime over the same common non-leap year of 365 days and time-based availability definition?",
     choices: [
       "It divides unavailability and the downtime budget by 10",
       "It subtracts exactly one minute from the downtime budget",

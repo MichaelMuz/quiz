@@ -30,11 +30,7 @@ import {
   reliabilityItems,
 } from "./reliability-content.js";
 import { sqlSupportItems } from "./sql-support-content.js";
-import {
-  sstableGeneratedDefinitions,
-  sstableGenerators,
-  sstableItems,
-} from "./sstable-compaction-content.js";
+import { sstableItems } from "./sstable-compaction-content.js";
 import { transactionConsistencyItems } from "./transaction-consistency-content.js";
 import { vpcControlPlaneItems } from "./vpc-control-plane-content.js";
 import { workloadIdentityItems } from "./workload-identity-content.js";
@@ -354,7 +350,6 @@ export const generatedDefinitions: GeneratedDefinition[] = [
   ...baseConversionDefinitions,
   ...latencyGeneratedDefinitions,
   ...reliabilityGeneratedDefinitions,
-  ...sstableGeneratedDefinitions,
 ];
 
 export const activeGeneratedDefinitions = generatedDefinitions.filter((definition) => definition.active !== false);
@@ -391,7 +386,6 @@ const generators: Record<string, (seed: number) => Omit<GeneratedQuestion, "stab
   ...baseConversionGenerators,
   ...latencyGenerators,
   ...reliabilityGenerators,
-  ...sstableGenerators,
   "cidr-ipv4-address-count"(seed) {
     const next = random(seed);
     const prefix = cidrPrefixes[Math.floor(next() * cidrPrefixes.length)]!;
