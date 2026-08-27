@@ -128,9 +128,10 @@ function renderGenerated(store: QuizStore, id: string, position: number, result:
   const question = store.getOrCreatePending(id, () => generateQuestion(id, seed()));
   const prefixRecall = question.grader === "iec-prefix";
   const textKeyboard = prefixRecall || question.grader === "base-hex" || question.grader === "base-binary-8";
+  const inputMode = textKeyboard ? "text" : question.grader === "reliability-number" ? "decimal" : "numeric";
   return pageChrome(position, `<section class="card"><div class="eyebrow">${prefixRecall ? "Quick recall" : "Quick calculation"}</div><h1>${escape(question.prompt)}</h1>
     <form method="post" action="/practice"><input type="hidden" name="questionId" value="${escape(id)}"><input type="hidden" name="submissionId" value="generated-${escape(id)}-${question.seed}"><input type="hidden" name="seed" value="${question.seed}">
-    <input name="response" type="text" inputmode="${textKeyboard ? "text" : "numeric"}" autocomplete="off" maxlength="24" aria-label="Your answer" required autofocus><button>Check answer</button></form></section>`, result, expectedAnswer, reviewedStableId);
+    <input name="response" type="text" inputmode="${inputMode}" autocomplete="off" maxlength="24" aria-label="Your answer" required autofocus><button>Check answer</button></form></section>`, result, expectedAnswer, reviewedStableId);
 }
 
 function renderProgress(store: QuizStore): string {

@@ -166,6 +166,46 @@ describe("Quiz HTTP app", () => {
     expect(store.attemptBySubmission(submissionId!)?.expectedAnswer).toBe(pending.feedback);
   });
 
+  it("replays reliability calculations with a phone decimal keyboard and derivation", async () => {
+    const stableId = "reliability-availability-to-downtime";
+    store.recordAttempt({
+      submissionId: "due-reliability-estimate",
+      stableId,
+      seed: 2,
+      prompt: "old prompt",
+      expectedAnswer: "old answer",
+      response: "wrong",
+      correct: false,
+      rating: "again",
+      reviewedAt: "2026-01-01T00:00:00.000Z",
+    });
+
+    const page = await (await fetch(`${base}/practice`)).text();
+    expect(page).toContain(`name="questionId" value="${stableId}"`);
+    expect(page).toContain('inputmode="decimal"');
+    const pending = store.getPending(stableId)!;
+    expect(pending).toEqual(generateQuestion(stableId, 1234));
+    expect(pending.feedback).toMatch(/downtime budget.*accounting window/i);
+
+    const submissionId = page.match(/name="submissionId" value="([^"]+)"/)?.[1];
+    expect(submissionId).toBeTruthy();
+    const result = await fetch(`${base}/practice`, {
+      method: "POST",
+      redirect: "manual",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        questionId: stableId,
+        submissionId: submissionId!,
+        response: pending.expectedAnswer,
+      }),
+    });
+    expect(result.status).toBe(303);
+
+    const reviewPage = await (await fetch(`${base}${result.headers.get("location")}`)).text();
+    expect(reviewPage).toContain(pending.feedback!);
+    expect(store.attemptBySubmission(submissionId!)?.expectedAnswer).toBe(pending.feedback);
+  });
+
   it("keeps cited sources reachable from a multiple-choice latency card", async () => {
     const item = contentBank.find(({ id }) => id === "latency-tls12-quic-comparison")!;
     store.recordAttempt({

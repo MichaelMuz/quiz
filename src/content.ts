@@ -21,8 +21,20 @@ import {
 } from "./latency-content.js";
 import { linuxBasicsItems } from "./linux-basics-content.js";
 import { linuxPermissionsContainerItems } from "./linux-permissions-container-content.js";
+import { olapTerminologyItems } from "./olap-terminology-content.js";
 import { processExitItems } from "./process-exit-content.js";
+import {
+  reliabilityGeneratedDefinitions,
+  reliabilityGenerators,
+  reliabilityGraders,
+  reliabilityItems,
+} from "./reliability-content.js";
 import { sqlSupportItems } from "./sql-support-content.js";
+import {
+  sstableGeneratedDefinitions,
+  sstableGenerators,
+  sstableItems,
+} from "./sstable-compaction-content.js";
 import { transactionConsistencyItems } from "./transaction-consistency-content.js";
 import { vpcControlPlaneItems } from "./vpc-control-plane-content.js";
 import { workloadIdentityItems } from "./workload-identity-content.js";
@@ -318,6 +330,9 @@ export const contentBank: StaticItem[] = [
   ...iamControlPlaneItems,
   ...iamPolicyInvestigationItems,
   ...latencyItems,
+  ...reliabilityItems,
+  ...sstableItems,
+  ...olapTerminologyItems,
   ...workloadIdentityItems,
   ...vpcControlPlaneItems,
   ...linuxBasicsItems,
@@ -338,6 +353,8 @@ export const generatedDefinitions: GeneratedDefinition[] = [
   { id: "cidr-ipv4-address-count", generator: "cidr-ipv4-address-count", grader: "integer", active: true },
   ...baseConversionDefinitions,
   ...latencyGeneratedDefinitions,
+  ...reliabilityGeneratedDefinitions,
+  ...sstableGeneratedDefinitions,
 ];
 
 export const activeGeneratedDefinitions = generatedDefinitions.filter((definition) => definition.active !== false);
@@ -373,6 +390,8 @@ const generators: Record<string, (seed: number) => Omit<GeneratedQuestion, "stab
   },
   ...baseConversionGenerators,
   ...latencyGenerators,
+  ...reliabilityGenerators,
+  ...sstableGenerators,
   "cidr-ipv4-address-count"(seed) {
     const next = random(seed);
     const prefix = cidrPrefixes[Math.floor(next() * cidrPrefixes.length)]!;
@@ -421,6 +440,7 @@ const graders: Record<string, (response: string, expected: string) => boolean> =
   integer: (response, expected) => /^[-+]?\d+$/.test(response.trim()) && BigInt(response.trim()) === BigInt(expected),
   ...baseConversionGraders,
   ...latencyGraders,
+  ...reliabilityGraders,
   "iec-prefix": (response, expected) => {
     const normalize = (value: string) => value.trim().toLowerCase().replace(/ib$/, "b");
     return normalize(response) === normalize(expected);
