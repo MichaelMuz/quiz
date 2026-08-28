@@ -33,15 +33,143 @@ const isolationIds = [
 const cohortIds = [...geometryIds, ...acidIds, ...isolationIds] as const;
 const accessedAt = "accessed 2026-08-07";
 
-type CohortId = typeof cohortIds[number];
-
-function item(id: CohortId) {
+function item(id: string) {
   const found = contentBank.find((candidate) => candidate.id === id);
   expect(found, `missing ${id}`).toBeDefined();
   return found!;
 }
 
 describe("transaction consistency and isolation practice", () => {
+  it("distinguishes the four classic session guarantees with replica-switch traces", () => {
+    const ids = contentBank
+      .filter(({ id }) => id.startsWith("session-guarantee-"))
+      .map(({ id }) => id);
+    expect(ids).toEqual([
+      "session-guarantee-read-your-writes",
+      "session-guarantee-monotonic-reads",
+      "session-guarantee-monotonic-writes",
+      "session-guarantee-writes-follow-reads",
+    ]);
+
+    const readYourWrites = item("session-guarantee-read-your-writes");
+    expect(readYourWrites.prompt).toMatch(/client C.*replica R1.*acknowledged.*v2.*replica R2.*reads v1/is);
+    expect(readYourWrites.correctChoice).toMatch(/read-your-writes/is);
+    expect(readYourWrites.answer).toMatch(/same session.*own acknowledged write.*not.*global real-time/is);
+
+    const monotonicReads = item("session-guarantee-monotonic-reads");
+    expect(monotonicReads.prompt).toMatch(/client C.*reads v3.*replica R1.*then.*reads v2.*replica R2/is);
+    expect(monotonicReads.correctChoice).toMatch(/monotonic reads/is);
+    expect(monotonicReads.answer).toMatch(/previously observed.*not.*client.*wrote/is);
+
+    const monotonicWrites = item("session-guarantee-monotonic-writes");
+    expect(monotonicWrites.prompt).toMatch(/client C.*W1.*v1.*acknowledged.*W2.*v2.*replica R2.*W2.*before W1/is);
+    expect(monotonicWrites.correctChoice).toMatch(/monotonic writes/is);
+    expect(monotonicWrites.answer).toMatch(/client.*issue order.*not.*all clients/is);
+
+    const writesFollowReads = item("session-guarantee-writes-follow-reads");
+    expect(writesFollowReads.prompt).toMatch(/client C.*reads.*W1.*then.*issues W2.*replica R2.*W2.*without W1/is);
+    expect(writesFollowReads.correctChoice).toMatch(/writes-follow-reads/is);
+    expect(writesFollowReads.answer).toMatch(/read.*dependency.*W1.*before.*W2/is);
+  });
+
+  it("orders transitive causal dependencies while leaving unrelated writes unordered", () => {
+    const ids = contentBank
+      .filter(({ id }) => id.startsWith("causal-consistency-"))
+      .map(({ id }) => id);
+    expect(ids).toEqual([
+      "causal-consistency-transitive-chain",
+      "causal-consistency-concurrent-writes",
+    ]);
+
+    const chain = item("causal-consistency-transitive-chain");
+    expect(chain.prompt).toMatch(/client A.*W1.*acknowledged.*W2.*client B.*reads.*W2.*W3.*replica R2.*W3.*without W1/is);
+    expect(chain.correctChoice).toMatch(/violates causal consistency.*W1.*W2.*W3/is);
+    expect(chain.answer).toMatch(/program order.*reads-from.*transitive closure.*not.*wall-clock/is);
+
+    const concurrent = item("causal-consistency-concurrent-writes");
+    expect(concurrent.prompt).toMatch(/W1.*acknowledged.*W2.*acknowledged.*neither client observed.*client C.*W1 then W2.*client D.*W2 then W1/is);
+    expect(concurrent.correctChoice).toMatch(/allowed.*causal consistency.*concurrent/is);
+    expect(concurrent.answer).toMatch(/unrelated.*different orders.*no causal edge/is);
+
+    for (const id of ids) {
+      expect(item(id).references).toContainEqual({
+        label: "Lloyd et al., Don't Settle for Eventual: Scalable Causal Consistency for Wide-Area Storage with COPS, SOSP 2011, accessed 2026-08-28",
+        url: "https://doi.org/10.1145/2043556.2043593",
+      });
+    }
+  });
+
+  it("ships a replay-safe, reachable eight-item client consistency cohort with explicit scope boundaries", () => {
+    const expectedIds = [
+      "session-guarantee-read-your-writes",
+      "session-guarantee-monotonic-reads",
+      "session-guarantee-monotonic-writes",
+      "session-guarantee-writes-follow-reads",
+      "causal-consistency-transitive-chain",
+      "causal-consistency-concurrent-writes",
+      "client-consistency-weakest-guarantee",
+      "client-consistency-scope-comparison",
+    ];
+    const items = contentBank.filter(({ topic }) => topic === "Client and causal consistency");
+    expect(items.map(({ id }) => id)).toEqual(expectedIds);
+    expect(new Set(expectedIds).size).toBe(8);
+
+    for (const candidate of items) {
+      expect(candidate.kind).toBe("command");
+      expect(candidate.choices).toHaveLength(4);
+      expect(new Set(candidate.choices).size).toBe(4);
+      expect(candidate.choices).toContain(candidate.correctChoice);
+      expect(candidate.references?.length).toBeGreaterThan(0);
+      expect(candidate.references?.some(({ label }) =>
+        label.includes("accessed 2026-08-28")),
+      ).toBe(true);
+      expect(candidate.references?.every(({ url }) => url.startsWith("https://"))).toBe(true);
+    }
+
+    const weakest = item("client-consistency-weakest-guarantee");
+    expect(weakest.prompt).toMatch(/weakest named guarantee.*four classic session guarantees.*reads v3.*then.*reads v2.*did not write/is);
+    expect(weakest.correctChoice).toMatch(/monotonic reads/is);
+    expect(weakest.answer).toMatch(/within.*listed.*not.*total ladder/is);
+
+    const scope = item("client-consistency-scope-comparison");
+    expect(scope.correctChoice).toMatch(/session.*client-local.*causal.*dependency.*linearizability.*real-time/is);
+    expect(scope.answer).toMatch(/independently selectable.*no single session guarantee.*causal consistency.*concurrent.*linearizability.*invocation.*response/is);
+    expect(scope.references).toHaveLength(3);
+
+    for (const id of cohortIds) {
+      expect(item(id).topic).not.toBe("Client and causal consistency");
+    }
+    const now = new Date("2026-08-28T12:00:00.000Z");
+    const reachable = new Set(Array.from({ length: contentBank.length * 2 }, (_, index) =>
+      chooseStableId((index * 2) + 1, [], now)));
+    expect(expectedIds.every((id) => reachable.has(id))).toBe(true);
+
+    const replay = item("causal-consistency-transitive-chain");
+    const store = new QuizStore(":memory:");
+    try {
+      store.recordAttempt({
+        submissionId: "client-consistency-replay",
+        stableId: replay.id,
+        seed: null,
+        prompt: replay.prompt,
+        expectedAnswer: replay.answer,
+        response: replay.correctChoice!,
+        correct: true,
+        rating: "good",
+        reviewedAt: now.toISOString(),
+      });
+      expect(store.attemptBySubmission("client-consistency-replay")).toMatchObject({
+        stableId: replay.id,
+        prompt: replay.prompt,
+        expectedAnswer: replay.answer,
+        response: replay.correctChoice,
+        correct: true,
+      });
+    } finally {
+      store.close();
+    }
+  });
+
   it("ships one bounded, sourced, deterministic cohort with stable grading", () => {
     const items = contentBank.filter(({ id }) =>
       id.startsWith("transaction-geometry-")

@@ -38,6 +38,15 @@ const postgresRetryReference: Reference = {
   label: `PostgreSQL 18 serialization failure handling, ${accessedAt}`,
   url: "https://www.postgresql.org/docs/current/mvcc-serialization-failure-handling.html",
 };
+const clientConsistencyAccessedAt = "accessed 2026-08-28";
+const sessionGuaranteesReference: Reference = {
+  label: `Terry et al., Session Guarantees for Weakly Consistent Replicated Data, PDIS 1994, ${clientConsistencyAccessedAt}`,
+  url: "https://doi.org/10.1109/PDIS.1994.331722",
+};
+const causalConsistencyReference: Reference = {
+  label: `Lloyd et al., Don't Settle for Eventual: Scalable Causal Consistency for Wide-Area Storage with COPS, SOSP 2011, ${clientConsistencyAccessedAt}`,
+  url: "https://doi.org/10.1145/2043556.2043593",
+};
 
 export const transactionConsistencyItems: StaticItem[] = [
   {
@@ -309,5 +318,125 @@ export const transactionConsistencyItems: StaticItem[] = [
     correctChoice: "Requested Read Uncommitted behaves as Read Committed; Repeatable Read prevents phantoms but may allow serialization anomalies; Serializable uses SSI to abort unsafe executions",
     answer: "The SQL standard names four levels and gives minimum prohibited phenomena. PostgreSQL 18 implements three distinct behaviors: requested Read Uncommitted maps to Read Committed; Read Committed uses a new snapshot per statement; Repeatable Read uses snapshot isolation and prevents phantoms, stronger than the standard minimum, while still permitting serialization anomalies; Serializable adds SSI monitoring and aborts transactions when needed to preserve a serial explanation. Do not export this PostgreSQL matrix as a universal vendor-independent rule.",
     references: [postgresIsolationReference, postgresMvccReference],
+  },
+  {
+    id: "session-guarantee-read-your-writes",
+    kind: "command",
+    topic: "Client and causal consistency",
+    prompt: "Replicas begin at profile v1. In one session, client C writes at replica R1, which records an acknowledged profile v2. C then switches to replica R2 and reads v1. Which named guarantee rules out this trace?",
+    choices: [
+      "Read-your-writes",
+      "Monotonic reads",
+      "Monotonic writes",
+      "Writes-follow-reads",
+    ],
+    correctChoice: "Read-your-writes",
+    answer: "Read-your-writes requires a later read in the same session to include C's own acknowledged write, even after a replica switch, so returning pre-write v1 violates it. This client-local guarantee does not require every client to observe v2 immediately or impose global real-time order.",
+    references: [sessionGuaranteesReference],
+  },
+  {
+    id: "session-guarantee-monotonic-reads",
+    kind: "command",
+    topic: "Client and causal consistency",
+    prompt: "Client C reads v3 from replica R1, then switches and reads v2 from replica R2. C did not write either version. Which named guarantee rules out moving backward?",
+    choices: [
+      "Monotonic reads",
+      "Read-your-writes",
+      "Monotonic writes",
+      "Writes-follow-reads",
+    ],
+    correctChoice: "Monotonic reads",
+    answer: "Monotonic reads requires later reads in one session to include the effects previously observed by that session. C moved from observed v3 back to older v2. Read-your-writes is not the right boundary because client C never wrote either version.",
+    references: [sessionGuaranteesReference],
+  },
+  {
+    id: "session-guarantee-monotonic-writes",
+    kind: "command",
+    topic: "Client and causal consistency",
+    prompt: "In one session, client C issues acknowledged W1: set draft=v1 at replica R1, then acknowledged W2: set draft=v2. Replica R2 applies W2 before W1. Which named guarantee is violated?",
+    choices: [
+      "Monotonic writes",
+      "Read-your-writes",
+      "Monotonic reads",
+      "Writes-follow-reads",
+    ],
+    correctChoice: "Monotonic writes",
+    answer: "Monotonic writes preserves one client's write issue order: W1 must be ordered before W2 wherever both are applied. It does not by itself establish an order between writes from all clients or say what a later read returns.",
+    references: [sessionGuaranteesReference],
+  },
+  {
+    id: "session-guarantee-writes-follow-reads",
+    kind: "command",
+    topic: "Client and causal consistency",
+    prompt: "Replica R1 contains client A's acknowledged W1: article=v2. Client C reads article=v2 from W1, then issues W2, an acknowledged write making the index point to article v2. Replica R2 exposes W2 without W1. Which named guarantee rules this out?",
+    choices: [
+      "Writes-follow-reads",
+      "Monotonic writes",
+      "Read-your-writes",
+      "Monotonic reads",
+    ],
+    correctChoice: "Writes-follow-reads",
+    answer: "Writes-follow-reads preserves the read dependency: because C observed W1 before issuing W2, W1 must be ordered before W2 and a replica must not expose W2 without W1. This is a read-to-later-write edge, not merely an order between C's own writes.",
+    references: [sessionGuaranteesReference],
+  },
+  {
+    id: "causal-consistency-transitive-chain",
+    kind: "command",
+    topic: "Client and causal consistency",
+    prompt: "At replica R1, client A issues acknowledged W1: article=v2, then in A's program order acknowledged W2: published=true. Client B reads published=true from W2, then issues acknowledged W3: index article v2. Replica R2 exposes W3 without W1. Is this causally consistent?",
+    choices: [
+      "Violates causal consistency: W1 → W2 → W3 is a causal chain",
+      "Allowed: only W2 directly precedes W3, so W1 may be absent",
+      "Allowed: acknowledgement order is never relevant to causality",
+      "Violates only linearizability because causal consistency orders wall-clock time",
+    ],
+    correctChoice: "Violates causal consistency: W1 → W2 → W3 is a causal chain",
+    answer: "A's program order gives W1 → W2. B's read reads-from W2, and B's later write gives W2 → W3. By transitive closure, W1 → W3, so exposing W3 without W1 violates causal consistency. These edges come from program order and data flow, not wall-clock order.",
+    references: [causalConsistencyReference],
+  },
+  {
+    id: "causal-consistency-concurrent-writes",
+    kind: "command",
+    topic: "Client and causal consistency",
+    prompt: "Client A's W1: x=1 is acknowledged at replica R1. Concurrently, client B's W2: y=1 is acknowledged at replica R2; neither client observed the other's write. Later client C observes W1 then W2, while client D observes W2 then W1. Is this allowed?",
+    choices: [
+      "Allowed by causal consistency because W1 and W2 are concurrent",
+      "Forbidden by causal consistency because every write needs one global order",
+      "Forbidden by monotonic writes because A and B issued writes in different sessions",
+      "Allowed only if neither write was acknowledged",
+    ],
+    correctChoice: "Allowed by causal consistency because W1 and W2 are concurrent",
+    answer: "The writes are unrelated and may be observed in different orders because no causal edge connects W1 and W2: neither client read or followed the other write. Causal consistency preserves causally related operations but does not invent an order for this concurrent pair.",
+    references: [causalConsistencyReference],
+  },
+  {
+    id: "client-consistency-weakest-guarantee",
+    kind: "command",
+    topic: "Client and causal consistency",
+    prompt: "Replica R1 has acknowledged W1 producing v3; R2 still has older v2. What is the weakest named guarantee among the four classic session guarantees for this trace? Client C reads v3 at R1, then reads v2 at R2; C did not write either version.",
+    choices: [
+      "Monotonic reads",
+      "Read-your-writes",
+      "Monotonic writes",
+      "Writes-follow-reads",
+    ],
+    correctChoice: "Monotonic reads",
+    answer: "Monotonic reads directly forbids one session from moving behind effects it already observed. Read-your-writes does not apply because C wrote nothing; monotonic writes and writes-follow-reads constrain writes, not this later read. “Weakest” is within the listed four for this exact trace, not a total ladder across session guarantees, causal consistency, and linearizability.",
+    references: [sessionGuaranteesReference],
+  },
+  {
+    id: "client-consistency-scope-comparison",
+    kind: "command",
+    topic: "Client and causal consistency",
+    prompt: "Which map keeps the scope and ordering rule of session guarantees, causal consistency, and linearizability distinct?",
+    choices: [
+      "Session guarantees: client-local session constraints; causal consistency: dependency order and transitive closure; linearizability: single-copy operation order preserving real-time precedence",
+      "Session guarantees: one global replica order; causal consistency: wall-clock order; linearizability: transaction commit order only",
+      "Session guarantees and causal consistency are synonyms; linearizability merely adds durability",
+      "All three form one total ladder, so any single session guarantee implies causal consistency",
+    ],
+    correctChoice: "Session guarantees: client-local session constraints; causal consistency: dependency order and transitive closure; linearizability: single-copy operation order preserving real-time precedence",
+    answer: "The four session guarantees are independently selectable constraints around a client's session; no single session guarantee supplies every causal edge. Causal consistency preserves program-order, reads-from, and transitive dependencies while allowing unrelated concurrent writes to be seen in different orders. Linearizability instead places each operation at one effect point between invocation and response and preserves real-time precedence for non-overlapping calls.",
+    references: [sessionGuaranteesReference, causalConsistencyReference, linearizabilityReference],
   },
 ];
