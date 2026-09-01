@@ -23,6 +23,7 @@ import { linuxBasicsItems } from "./linux-basics-content.js";
 import { linuxPermissionsContainerItems } from "./linux-permissions-container-content.js";
 import { olapTerminologyItems } from "./olap-terminology-content.js";
 import { processExitItems } from "./process-exit-content.js";
+import { postgresqlCapacityItems } from "./postgresql-capacity-content.js";
 import {
   reliabilityGeneratedDefinitions,
   reliabilityGenerators,
@@ -334,6 +335,7 @@ export const contentBank: StaticItem[] = [
   ...linuxBasicsItems,
   ...linuxPermissionsContainerItems,
   ...sqlSupportItems,
+  ...postgresqlCapacityItems,
   ...transactionConsistencyItems,
   ...baseConversionMethodItems,
   ...commandExercises,
