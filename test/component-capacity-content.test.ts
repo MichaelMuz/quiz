@@ -29,13 +29,15 @@ describe("scoped component-capacity anchors", () => {
     ]));
   });
 
-  it("sizes a Redis working set from measured memory, forecast growth, and explicit headroom", () => {
+  it("sizes a Redis dataset from the dataset metric, forecast growth, and explicit headroom", () => {
     const current = item("component-capacity-redis-memory-headroom");
 
-    expect(current.prompt).toMatch(/used_memory.*48 GiB.*20%.*growth.*25%.*headroom.*maxmemory.*64 GiB.*replication.*AOF/is);
+    expect(current.prompt).toMatch(/used_memory_dataset.*48 GiB.*20%.*growth.*25%.*headroom.*maxmemory.*64 GiB.*replication.*AOF/is);
+    expect(current.prompt).not.toMatch(/used_memory\s*=/i);
     expect(current.correctChoice).toMatch(/57\.6 GiB.*72 GiB.*does not fit.*larger node|57\.6 GiB.*72 GiB.*larger node.*does not fit/is);
     expect(current.choices).toContain(current.correctChoice);
     expect(current.answer).toMatch(/48 × 1\.20 = 57\.6 GiB.*57\.6 × 1\.25 = 72 GiB/is);
+    expect(current.answer).toMatch(/used_memory_dataset.*cached data|cached data.*used_memory_dataset/is);
     expect(current.answer).toMatch(/mem_not_counted_for_evict.*replica.*AOF.*not included.*maxmemory/is);
     expect(current.answer).toMatch(/evicted_keys.*keyspace_hits.*keyspace_misses.*latency.*network/is);
     expect(current.references).toEqual(expect.arrayContaining([

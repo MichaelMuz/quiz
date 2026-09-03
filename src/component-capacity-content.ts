@@ -58,7 +58,7 @@ export const componentCapacityItems: StaticItem[] = [
     id: "component-capacity-redis-memory-headroom",
     kind: "flashcard",
     topic: "Component capacity planning",
-    prompt: "Redis INFO reports used_memory = 48 GiB. Plan for 20% working-set growth, then 25% safety headroom. maxmemory is 64 GiB; replication and AOF are enabled. What follows?",
+    prompt: "Redis INFO reports used_memory_dataset = 48 GiB. Plan for 20% cached-dataset growth, then 25% safety headroom. maxmemory is 64 GiB; replication and AOF are enabled. What follows?",
     choices: [
       "Forecast 57.6 GiB and plan 72 GiB; it does not fit, so reduce retained data or use a larger node before considering sharding",
       "Forecast 57.6 GiB; it fits because safety headroom is only applied after maxmemory is exceeded",
@@ -66,7 +66,7 @@ export const componentCapacityItems: StaticItem[] = [
       "Add a replica because replication increases the primary's maxmemory capacity",
     ],
     correctChoice: "Forecast 57.6 GiB and plan 72 GiB; it does not fit, so reduce retained data or use a larger node before considering sharding",
-    answer: "48 × 1.20 = 57.6 GiB after forecast growth; 57.6 × 1.25 = 72 GiB with the requested headroom. That exceeds maxmemory = 64 GiB. First validate retention and TTLs, or move vertically to a node with enough RAM; discuss sharding only if the measured working set or throughput cannot fit a suitable node. Replication is for availability and creates another copy, not more primary capacity. Redis reports mem_not_counted_for_evict for replica and AOF buffers that are not included in the maxmemory eviction comparison, so host RAM needs room beyond maxmemory. During validation, watch evicted_keys, keyspace_hits, keyspace_misses, latency percentiles, memory/RSS, and network saturation rather than treating one utilization percentage as a law.",
+    answer: "Redis defines used_memory_dataset as the memory used for cached data, so 48 × 1.20 = 57.6 GiB after forecast growth; 57.6 × 1.25 = 72 GiB with the requested headroom. That exceeds maxmemory = 64 GiB. First validate retention and TTLs, or move vertically to a node with enough RAM; discuss sharding only if the measured working set or throughput cannot fit a suitable node. Replication is for availability and creates another copy, not more primary capacity. Redis reports mem_not_counted_for_evict for replica and AOF buffers that are not included in the maxmemory eviction comparison, so host RAM needs room beyond maxmemory. During validation, watch evicted_keys, keyspace_hits, keyspace_misses, latency percentiles, memory/RSS, and network saturation rather than treating one utilization percentage as a law.",
     references: [redisEvictionReference],
   },
   {
