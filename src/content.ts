@@ -34,6 +34,7 @@ import {
 import { sqlSupportItems } from "./sql-support-content.js";
 import { sstableItems } from "./sstable-compaction-content.js";
 import { transactionConsistencyItems } from "./transaction-consistency-content.js";
+import { viewstampedReplicationItems } from "./viewstamped-replication-content.js";
 import { vpcControlPlaneItems } from "./vpc-control-plane-content.js";
 import { workloadIdentityItems } from "./workload-identity-content.js";
 
@@ -339,6 +340,7 @@ export const contentBank: StaticItem[] = [
   ...sqlSupportItems,
   ...postgresqlCapacityItems,
   ...transactionConsistencyItems,
+  ...viewstampedReplicationItems,
   ...baseConversionMethodItems,
   ...commandExercises,
 ];
