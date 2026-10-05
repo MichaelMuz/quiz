@@ -34,7 +34,7 @@ export const viewstampedReplicationItems: StaticItem[] = [
     id: "vr-normal-operation-sequence",
     kind: "ordering",
     topic: "Viewstamped Replication",
-    prompt: "Put one successful normal-operation request in protocol order. Assume the request is new, replicas begin in normal status in one view, and no messages are lost.",
+    prompt: "Put one successful normal-operation request in protocol order. Fixed group: 3 replicas; crash failures only; f = 1; quorum = 2. Assume the request is new, replicas begin in normal status in one view, and no messages are lost.",
     orderedItems: [
       "Client sends REQUEST(operation, client-id, request-number) to the primary",
       "Primary checks the client table, appends the request with a new op-number, then sends PREPARE",
@@ -66,13 +66,13 @@ export const viewstampedReplicationItems: StaticItem[] = [
     topic: "Viewstamped Replication",
     prompt: "Normal operation, 3 replicas, f = 1. Backup B1 has op-number = 9 and commit-number = 8: entry 9 arrived in PREPARE and B1 returned PREPAREOK, but it has not seen a newer commit-number. Now B1 receives the next PREPARE for op-number 10 carrying commit-number 9. What does B1 do?",
     choices: [
-      "B1 first executes committed operation 9, then appends operation 10 and replies PREPAREOK",
+      "B1 advances the committed prefix through operation 9 and executes it in order; it also appends operation 10 and replies PREPAREOK",
       "B1 executes both operations 9 and 10 immediately because receiving PREPARE commits its entry",
       "B1 discards operation 9 because only the primary may retain an uncommitted entry",
       "B1 rejects operation 10 because commit-number must equal the PREPARE's op-number",
     ],
-    correctChoice: "B1 first executes committed operation 9, then appends operation 10 and replies PREPAREOK",
-    answer: "Before this message, entry 9 was prepared at B1 but not yet known committed there: op-number was 9 while commit-number was 8. The PREPARE for operation 10 carries commit-number 9, so B1 advances its committed prefix and executes operation 9 before handling 10. It then appends the next consecutive entry and replies PREPAREOK. Entry 10 is prepared, not committed merely by that PREPARE.",
+    correctChoice: "B1 advances the committed prefix through operation 9 and executes it in order; it also appends operation 10 and replies PREPAREOK",
+    answer: "Before this message, entry 9 was prepared at B1 but not yet known committed there: op-number was 9 while commit-number was 8. The PREPARE carries commit-number 9, so B1 advances its committed prefix and executes operation 9 in log order. B1 also appends the next consecutive entry and replies PREPAREOK. The protocol does not require operation 9's execution before appending or acknowledging operation 10, so that local interleaving is not part of the graded outcome. Entry 10 is prepared, not committed merely by that PREPARE.",
     references: [vrRevisitedReference],
   },
   {
@@ -141,13 +141,13 @@ export const viewstampedReplicationItems: StaticItem[] = [
     topic: "Viewstamped Replication",
     prompt: "Replica R3 restarts after a crash and has lost volatile state. It chooses a fresh nonce and broadcasts RECOVERY in a group of 3 replicas with f = 1. One backup replies, but no reply from the current primary has arrived. May R3 resume normal protocol participation?",
     choices: [
-      "Wait for matching-nonce replies from two replicas including the primary, install the primary's state, then enter normal status",
+      "Wait for matching-nonce replies from two replicas including the primary, install the primary's protocol/log state, then enter normal status",
       "Resume after any one reply because a recovering replica does not need a quorum",
       "Resume immediately and use PREPARE messages to reconstruct both its view and client table",
       "Run a view change by itself because losing volatile state proves the primary also failed",
     ],
-    correctChoice: "Wait for matching-nonce replies from two replicas including the primary, install the primary's state, then enter normal status",
-    answer: "While recovering, R3 does not participate in normal processing or view changes. It waits for a quorum of f + 1 = 2 RECOVERYRESPONSE messages for its nonce, including the current primary's response carrying application state, log, view-number, op-number, and commit-number, then installs that state and changes to normal. The nonce prevents stale responses from an older recovery attempt. By contrast, state transfer repairs a normal backup that detects a log gap or stale state; that catch-up path is not the reboot recovery protocol.",
+    correctChoice: "Wait for matching-nonce replies from two replicas including the primary, install the primary's protocol/log state, then enter normal status",
+    answer: "While recovering, R3 does not participate in normal processing or view changes. It waits for a quorum of f + 1 = 2 RECOVERYRESPONSE messages for its nonce, including the current primary's response with the current view-number, log, op-number, and commit-number. R3 installs that protocol/log state and changes to normal; the nonce prevents stale responses from an older recovery attempt. If R3 also needs application checkpoint state, the optimized protocol obtains it through a separate state transfer before recovery, and that transfer need not come from the primary. A normal backup can likewise use state transfer to repair a detected log gap; neither path makes application state part of RECOVERYRESPONSE.",
     references: [vrRevisitedReference],
   },
   {

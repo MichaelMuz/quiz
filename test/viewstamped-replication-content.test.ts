@@ -36,6 +36,7 @@ describe("Viewstamped Replication Revisited protocol traces", () => {
     const current = item("vr-normal-operation-sequence");
 
     expect(current.kind).toBe("ordering");
+    expect(current.prompt).toMatch(/3 replicas.*crash.*f = 1.*quorum = 2/is);
     expect(current.orderedItems).toEqual([
       "Client sends REQUEST(operation, client-id, request-number) to the primary",
       "Primary checks the client table, appends the request with a new op-number, then sends PREPARE",
@@ -62,8 +63,10 @@ describe("Viewstamped Replication Revisited protocol traces", () => {
     const current = item("vr-prepare-vs-commit-propagation");
 
     expect(current.prompt).toMatch(/3 replicas.*B1.*op-number = 9.*commit-number = 8.*PREPARE.*op-number 10.*commit-number 9/is);
-    expect(current.correctChoice).toBe("B1 first executes committed operation 9, then appends operation 10 and replies PREPAREOK");
-    expect(current.answer).toMatch(/entry 9.*prepared.*not yet known committed.*commit-number 9.*execute.*before.*10/is);
+    expect(current.correctChoice).toBe("B1 advances the committed prefix through operation 9 and executes it in order; it also appends operation 10 and replies PREPAREOK");
+    expect(current.correctChoice).not.toMatch(/first|before|then/i);
+    expect(current.answer).toMatch(/entry 9.*prepared.*not yet known committed.*commit-number 9.*execute.*in (?:log )?order/is);
+    expect(current.answer).toMatch(/protocol does not require.*execution.*before.*append|append.*before.*execution/is);
   });
 
   it("suppresses a duplicate client request after a lost reply and view change", () => {
@@ -120,9 +123,10 @@ describe("Viewstamped Replication Revisited protocol traces", () => {
     const current = item("vr-recovery-and-state-transfer");
 
     expect(current.prompt).toMatch(/R3.*lost volatile state.*nonce.*RECOVERY.*3 replicas.*f = 1/is);
-    expect(current.correctChoice).toBe("Wait for matching-nonce replies from two replicas including the primary, install the primary's state, then enter normal status");
-    expect(current.answer).toMatch(/recovering.*not participate.*quorum.*f \+ 1.*primary.*state.*nonce/is);
-    expect(current.answer).toMatch(/state transfer.*normal backup.*gap.*not.*recovery protocol/is);
+    expect(current.correctChoice).toBe("Wait for matching-nonce replies from two replicas including the primary, install the primary's protocol/log state, then enter normal status");
+    expect(current.answer).toMatch(/recovering.*not participate.*quorum.*f \+ 1.*primary.*protocol.*log.*nonce/is);
+    expect(current.answer).toMatch(/application checkpoint state.*separate.*transfer.*need not come from the primary/is);
+    expect(current.answer).not.toMatch(/primary.*response carrying application state/is);
   });
 
   it("maps only the narrow shared VR and Raft vocabulary without merging protocols", () => {
